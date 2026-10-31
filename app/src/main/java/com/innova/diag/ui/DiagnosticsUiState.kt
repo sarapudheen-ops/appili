@@ -6,11 +6,14 @@ import com.innova.diag.domain.obd.PidReading
 import com.innova.diag.platform.bluetooth.BluetoothPermissionState
 import com.innova.diag.platform.bluetooth.PairedDevice
 
-/** The three screens. Plain state, not a navigation graph: there is nothing to deep-link. */
+/** The screens. Plain state, not a navigation graph: there is nothing to deep-link. */
 enum class DiagnosticsScreen(val tabLabel: String) {
     CONNECTION("Connection"),
     SCAN("Scan"),
     LIVE_DATA("Live data"),
+
+    /** Bench-only: drives the in-process mock ECU, never a vehicle. */
+    SIMULATED_TEST("Simulated test"),
 }
 
 /** State of the generic scan. Each state is a different truth, so none of them is "empty". */

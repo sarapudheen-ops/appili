@@ -50,6 +50,11 @@ fun DiagnosticsApp(
     onExport: (SessionExportFormat) -> Unit,
     onSelectScreen: (DiagnosticsScreen) -> Unit,
     onDismissMessage: () -> Unit,
+    activeTest: ActiveTestUiState,
+    onActiveTestHoldStart: () -> Unit,
+    onActiveTestHoldEnd: () -> Unit,
+    onActiveTestDropLink: () -> Unit,
+    onActiveTestReconnect: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -116,6 +121,14 @@ fun DiagnosticsApp(
                     DiagnosticsScreen.LIVE_DATA -> LiveDataScreen(
                         state = state,
                         onTogglePolling = onToggleLiveData,
+                    )
+
+                    DiagnosticsScreen.SIMULATED_TEST -> SimulatedActuatorTestScreen(
+                        state = activeTest,
+                        onHoldStart = onActiveTestHoldStart,
+                        onHoldEnd = onActiveTestHoldEnd,
+                        onDropLink = onActiveTestDropLink,
+                        onReconnect = onActiveTestReconnect,
                     )
                 }
             }
@@ -195,6 +208,11 @@ private fun DiagnosticsAppPreview() {
             onExport = {},
             onSelectScreen = {},
             onDismissMessage = {},
+            activeTest = ActiveTestUiState(transportState = TransportState.CONNECTED),
+            onActiveTestHoldStart = {},
+            onActiveTestHoldEnd = {},
+            onActiveTestDropLink = {},
+            onActiveTestReconnect = {},
         )
     }
 }

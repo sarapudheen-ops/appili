@@ -15,6 +15,7 @@ Pilot vehicle: 2007 Toyota Innova (GCC). **Read-only toward physical vehicles** 
 | OBD-II read-only decode (modes 01/03/07/09) | Implemented: decoders + request port; **no writes** (build gate unrun — A9) |
 | Compose UI: connection, generic scan, live data, session export | Implemented: 177 JVM tests; gate and emulator run **unrun** (A9, A42) |
 | Vehicle profiles (JSON) + fail-closed matching gate | Implemented: parser, models, executor, candidate profile; gate **unrun** (A9) |
+| Active-test state machine + bench ECU + simulator screen | Implemented: dead-man switch, 10 s ceiling, hardware lock; gate **unrun** (A9) |
 | UDS / manufacturer-specific modes | Not started — blocked by unverified vehicle matrix |
 
 Opening an RFCOMM socket is transport plumbing: it sends zero bytes and assumes no protocol. Every
@@ -32,6 +33,7 @@ app/src/main/java/com/innova/diag/
   platform/bluetooth/      # RFCOMM transport, paired-device listing, permission provider
   domain/session/          # pure Kotlin: session log, sanitiser, JSON/CSV exporter
   domain/profile/          # pure Kotlin: profile schema, strict JSON parser, fail-closed gate
+  domain/active/           # pure Kotlin: dead-man switch, bench ECU simulator, UDS frames
   platform/demo/           # demo-mode switch; the scripted transport itself lives in src/debug
   ui/                      # Compose: connection, generic scan, live data, raw console (debug only)
 app/src/test/java/com/innova/diag/
@@ -42,6 +44,7 @@ app/src/test/java/com/innova/diag/
   ui/                      # presentation tests: "never renders 0 for an absent value" and friends
   domain/session/          # export tests: well-formed JSON/CSV, VIN redaction, escaping
   domain/profile/          # parser rejections, model invariants, "refusal transmits nothing"
+  domain/active/           # release sends ReturnControlToECU, disconnect aborts, 10 s ceiling
 app/src/main/assets/profiles/  # toyota_innova_2007_gcc.json — UNVERIFIED candidate, no captured bytes
 app/src/debug/java/com/innova/diag/
   platform/demo/           # DemoByteTransport: a scripted, authored ELM327 transcript (never shipped)
@@ -167,6 +170,34 @@ a recording transport sees **zero bytes**.
 Profiles are not yet loaded by the app (A50): this phase adds the schema, the parser and the gate, not
 a new way for the UI to talk to a car.
 
+## Active tests (bench only)
+
+`domain.active.ActiveTestController` is the one place in the app that takes control of anything, and it
+cannot reach a vehicle:
+
+- **Hardware lock.** A controller constructed over a `PhysicalTransport` throws
+  `IllegalStateException("Physical execution disabled")` — at construction, not at run time.
+  `BluetoothClassicTransport` carries that marker, so the real adapter is locked out by type.
+- **Dead-man switch.** There is no start/stop pair: one suspend `hold(command)` runs while the caller's
+  coroutine lives. The press-and-hold gesture *is* the coroutine, so letting go ends the test.
+- **Hard ceiling.** 10.0 s maximum, configurable only downward; a 100 ms countdown is published for the
+  UI and the cut-off is decided by the controller, not the screen.
+- **One exit.** Release, ceiling and abort all leave through the same `finally`, which sends
+  `ReturnControlToECU` (`2F <DID> 00`) under `NonCancellable`. A cancelled coroutine still runs it.
+- **Abort listener.** Any `TransportState` other than `CONNECTED` aborts immediately, not on the next
+  tick. If the link is already gone the release frame cannot be delivered, and the state says so
+  (`controlReturned == false`) rather than claiming control was returned (A58).
+
+`MockEcuSimulator : ByteTransport` is the bench ECU: it answers UDS `0x2F` (InputOutputControl) with
+`6F ...`, `0x31` (RoutineControl) with `71 ...`, unknown services with `7F <SID> 11`, malformed frames
+with `7F <SID> 13`, and terminates everything with the ELM `>` prompt. It is not a `PhysicalTransport`,
+which is what makes the locked path reachable at all.
+
+The fourth tab, **Simulated test**, carries the banner `SIMULATOR MODE — NO PHYSICAL COMMANDS`, a
+press-and-hold control for the Radiator Fan Relay Test, and the live countdown to the automatic cut-off.
+Its view model can only construct the mock, so the Bluetooth transport the other screens use is not in
+its object graph (A60).
+
 ## Verification status
 
 `./gradlew lintDebug testDebugUnitTest assembleDebug` has **not** been run: this repository was
@@ -176,8 +207,9 @@ instead, statically and mechanically:
 
 - 177 JVM test methods across 20 test classes from phases 1–6, plus the phase-7 profile tests
   (`VehicleProfileParserTest`, `ProfileOperationExecutorTest`, `ProfileModelTest`,
-  `ToyotaInnovaProfileAssetTest`), all against fake transports, replay strings and JSON fixtures —
-  never a device.
+  `ToyotaInnovaProfileAssetTest`) and the phase-8 active-test tests (`ActiveTestControllerTest`,
+  `MockEcuSimulatorTest`, `ActiveTestPresentationTest`), all against fake transports, replay strings,
+  JSON fixtures and a bench ECU — never a device.
 - A bracket/quote-aware scan of all 65 Kotlin sources: no unbalanced or mismatched delimiters.
 - An identifier audit over `app/src/**/*.kt`: no unresolved capitalised reference.
 - The demo transcript driven through a mirror of the channel → decoder → `Readings` pipeline, which

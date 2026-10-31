@@ -19,6 +19,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.innova.diag.platform.bluetooth.BLUETOOTH_RUNTIME_PERMISSIONS
+import com.innova.diag.ui.ActiveTestViewModel
 import com.innova.diag.ui.AppTheme
 import com.innova.diag.ui.DiagnosticsApp
 import com.innova.diag.ui.DiagnosticsViewModel
@@ -34,17 +35,27 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: DiagnosticsViewModel by viewModels()
 
+    /**
+     * Bench-only. It owns a [com.innova.diag.domain.active.MockEcuSimulator], so nothing it can do
+     * touches the Bluetooth transport the other view model drives.
+     */
+    private val activeTestViewModel: ActiveTestViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AppTheme { DiagnosticsRoute(viewModel) }
+            AppTheme { DiagnosticsRoute(viewModel, activeTestViewModel) }
         }
     }
 }
 
 @Composable
-private fun DiagnosticsRoute(viewModel: DiagnosticsViewModel) {
+private fun DiagnosticsRoute(
+    viewModel: DiagnosticsViewModel,
+    activeTestViewModel: ActiveTestViewModel,
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val activeTestState by activeTestViewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -91,6 +102,11 @@ private fun DiagnosticsRoute(viewModel: DiagnosticsViewModel) {
         },
         onSelectScreen = viewModel::navigateTo,
         onDismissMessage = viewModel::dismissMessage,
+        activeTest = activeTestState,
+        onActiveTestHoldStart = activeTestViewModel::holdStart,
+        onActiveTestHoldEnd = activeTestViewModel::holdEnd,
+        onActiveTestDropLink = activeTestViewModel::dropLink,
+        onActiveTestReconnect = activeTestViewModel::reconnect,
     )
 }
 

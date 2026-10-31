@@ -3,7 +3,7 @@ package com.innova.diag.platform.bluetooth
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothSocket
-import com.innova.diag.core.transport.ByteTransport
+import com.innova.diag.core.transport.PhysicalTransport
 import com.innova.diag.core.transport.TransportState
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
@@ -27,7 +27,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /**
- * Bluetooth Classic RFCOMM (Serial Port Profile) implementation of [ByteTransport].
+ * Bluetooth Classic RFCOMM (Serial Port Profile) implementation of [PhysicalTransport].
  *
  * ### What this class does
  * Opens an RFCOMM socket to a **user-selected** bonded device, adapts the blocking stream into a
@@ -58,7 +58,7 @@ class BluetoothClassicTransport(
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
     private val readBufferSize: Int = DEFAULT_READ_BUFFER_SIZE,
-) : ByteTransport {
+) : PhysicalTransport {
 
     private val gate = Mutex()
     private val writeGate = Mutex()

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "status": "UNVERIFIED",
+  "note": "Awaiting physical bus dump from authorized tool.",
+  "id": "toyota-innova-2007-gcc",
+  "make": "Toyota",
+  "model": "Innova",
+  "yearRange": {
+    "from": 2007,
+    "to": 2007
+  },
+  "market": "GCC",
+  "ecuDefinitions": [
+    {
+      "name": "Engine ECU",
+      "network": "UNKNOWN",
+      "txId": "UNKNOWN",
+      "rxId": "UNKNOWN",
+      "initCommands": "UNKNOWN",
+      "supportedServices": [],
+      "status": "UNVERIFIED"
+    }
+  ],
+  "operations": [
+    {
+      "id": "generic.read-supported-pids",
+      "riskClass": "READ_ONLY",
+      "serviceBytes": "0100"
+    },
+    {
+      "id": "generic.read-engine-speed",
+      "riskClass": "READ_ONLY",
+      "serviceBytes": "010C"
+    },
+    {
+      "id": "generic.read-stored-dtcs",
+      "riskClass": "READ_ONLY",
+      "serviceBytes": "03"
+    },
+    {
+      "id": "generic.read-vin",
+      "riskClass": "READ_ONLY",
+      "serviceBytes": "0902"
+    }
+  ]
+}

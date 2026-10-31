@@ -14,6 +14,7 @@ Pilot vehicle: 2007 Toyota Innova (GCC). **Read-only toward physical vehicles** 
 | ELM adapter engine (channel + init) | Implemented: AT configuration only — **no PIDs, no headers** |
 | OBD-II read-only decode (modes 01/03/07/09) | Implemented: decoders + request port; **no writes** (build gate unrun — A9) |
 | Compose UI: connection, generic scan, live data, session export | Implemented: 177 JVM tests; gate and emulator run **unrun** (A9, A42) |
+| Vehicle profiles (JSON) + fail-closed matching gate | Implemented: parser, models, executor, candidate profile; gate **unrun** (A9) |
 | UDS / manufacturer-specific modes | Not started — blocked by unverified vehicle matrix |
 
 Opening an RFCOMM socket is transport plumbing: it sends zero bytes and assumes no protocol. Every
@@ -30,6 +31,7 @@ app/src/main/java/com/innova/diag/
   adapter/elm/             # ElmChannel (command/response) + ElmInitializer + ElmObdCommandPort
   platform/bluetooth/      # RFCOMM transport, paired-device listing, permission provider
   domain/session/          # pure Kotlin: session log, sanitiser, JSON/CSV exporter
+  domain/profile/          # pure Kotlin: profile schema, strict JSON parser, fail-closed gate
   platform/demo/           # demo-mode switch; the scripted transport itself lives in src/debug
   ui/                      # Compose: connection, generic scan, live data, raw console (debug only)
 app/src/test/java/com/innova/diag/
@@ -39,6 +41,8 @@ app/src/test/java/com/innova/diag/
   platform/bluetooth/      # transport/socket tests with mocked Android Bluetooth classes
   ui/                      # presentation tests: "never renders 0 for an absent value" and friends
   domain/session/          # export tests: well-formed JSON/CSV, VIN redaction, escaping
+  domain/profile/          # parser rejections, model invariants, "refusal transmits nothing"
+app/src/main/assets/profiles/  # toyota_innova_2007_gcc.json — UNVERIFIED candidate, no captured bytes
 app/src/debug/java/com/innova/diag/
   platform/demo/           # DemoByteTransport: a scripted, authored ELM327 transcript (never shipped)
 ```
@@ -128,6 +132,41 @@ The transcript doubles as the truthfulness demo: `0x05` (coolant) is *excluded* 
 scan screen shows **Not Supported** and never sends `0105`, while `07` answering `NO DATA` shows
 **No Response** — two different kinds of "nothing", displayed two different ways.
 
+## Vehicle profiles and the matching gate
+
+A profile is a JSON description of a vehicle model, market and year span, the ECUs on its bus, and the
+operations that may be asked of them. It is **pure data**: it is parsed, never evaluated, and no value
+in it can become a command unless it is a hex string the parser accepts (AGENTS.md Rule 5).
+
+```
+VehicleProfile  id, make, model, yearRange, market, ecuDefinitions, operations
+  EcuDefinition name, network, txId, rxId, initCommands, supportedServices, status
+  DiagnosticOperation  id, riskClass (READ_ONLY | ACTIVE_TEST | CONFIGURATION), serviceBytes
+ProfileStatus   VERIFIED | UNVERIFIED | SIMULATOR_ONLY
+```
+
+`ProfileOperationExecutor` is the only way a profile can cause a byte to reach a vehicle, and it is
+**fail-closed**: it throws `SafetyViolationException` *before* touching the transport, with a reason —
+`PROFILE_NOT_VERIFIED`, `SIMULATOR_ONLY`, `ECU_NOT_DESCRIBED`, `OPERATION_NOT_DECLARED`,
+`RISK_CLASS_FORBIDDEN`, `SERVICE_NOT_DECLARED`. A refusal is never returned as a vehicle answer, so a
+caller cannot read it as `NoResponse`.
+
+Three things are unrepresentable rather than merely disallowed:
+
+- **write services** — `04`, `2E`, `2F`, `31`, `21`, `22` and the rest fail in the `DiagnosticOperation`
+  constructor (read-only J1979 services only: A46);
+- **a header** — an init command beginning `ATSH` is rejected by `InitSequence.Known` (A44);
+- **an invented address** — `txId`/`rxId` are `Known(hex)` or `Unknown`, never a default (`7E0` is not a
+  fallback for anything).
+
+The candidate profile `toyota_innova_2007_gcc.json` is `UNVERIFIED`, with `UNKNOWN` addresses, network
+and init sequence, an empty `supportedServices`, and the note *"Awaiting physical bus dump from
+authorized tool."* Every operation it declares is refused, and a test asserts that a real channel over
+a recording transport sees **zero bytes**.
+
+Profiles are not yet loaded by the app (A50): this phase adds the schema, the parser and the gate, not
+a new way for the UI to talk to a car.
+
 ## Verification status
 
 `./gradlew lintDebug testDebugUnitTest assembleDebug` has **not** been run: this repository was
@@ -135,9 +174,10 @@ authored in an environment with no JDK and no Android SDK (A9, A42), so the gate
 passed**, and the requested emulator run and screenshots could not be taken. What was verified
 instead, statically and mechanically:
 
-- 177 JVM test methods across 20 test classes, 50 of them new in this phase (`ui/`, `domain/session/`,
-  `GenericScanTest`, `AdapterInfoReaderTest`, `RecordingCommandChannelTest`), all against fake
-  transports and replay strings — never a device.
+- 177 JVM test methods across 20 test classes from phases 1–6, plus the phase-7 profile tests
+  (`VehicleProfileParserTest`, `ProfileOperationExecutorTest`, `ProfileModelTest`,
+  `ToyotaInnovaProfileAssetTest`), all against fake transports, replay strings and JSON fixtures —
+  never a device.
 - A bracket/quote-aware scan of all 65 Kotlin sources: no unbalanced or mismatched delimiters.
 - An identifier audit over `app/src/**/*.kt`: no unresolved capitalised reference.
 - The demo transcript driven through a mirror of the channel → decoder → `Readings` pipeline, which

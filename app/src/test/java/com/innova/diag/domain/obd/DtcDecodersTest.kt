@@ -2,6 +2,7 @@ package com.innova.diag.domain.obd
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -105,9 +106,9 @@ class DtcDecodersTest {
         val result = DtcDecoders.stored("NO DATA")
 
         result.assertNoResponse("the adapter's NO DATA")
-        assertFalse(
+        assertNull(
             "'we were not told' must not be reported as 'there are no fault codes'",
-            result is DiagnosticResult.Success,
+            result.dataOrNull,
         )
     }
 

@@ -40,7 +40,7 @@ import kotlinx.coroutines.withTimeout
 class ElmChannel(
     private val transport: ByteTransport,
     private val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
-) {
+) : ElmCommandChannel {
 
     private val gate = Mutex()
 
@@ -48,13 +48,19 @@ class ElmChannel(
      * Sends [command] and returns its normalized response.
      *
      * @param timeoutMillis overrides the channel default for this call only (e.g. the long reset).
-     * @return the response with echo, line endings and whitespace removed; may be empty when the
-     *   adapter answers with only a prompt.
+     * @param normalization `HEX` strips all whitespace (the default, and what decoders expect);
+     *   `TEXT` keeps it, for adapter identity/protocol strings.
+     * @return the response with echo and line endings removed; may be empty when the adapter answers
+     *   with only a prompt.
      * @throws ElmException if the adapter reports an error token or the prompt never arrives.
      * @throws IllegalArgumentException if [command] is blank or contains a line terminator (which
      *   would inject a second command).
      */
-    suspend fun execute(command: String, timeoutMillis: Long? = null): String {
+    override suspend fun execute(
+        command: String,
+        timeoutMillis: Long?,
+        normalization: ElmResponseNormalization,
+    ): String {
         val normalizedCommand = command.trim()
         require(normalizedCommand.isNotEmpty()) { "ELM command must not be blank" }
         require(normalizedCommand.none { it == '\r' || it == '\n' }) {
@@ -64,7 +70,11 @@ class ElmChannel(
 
         return gate.withLock {
             transport.write((normalizedCommand + TERMINATOR).encodeToByteArray())
-            interpret(normalizedCommand, awaitResponse(normalizedCommand, effectiveTimeout))
+            interpret(
+                command = normalizedCommand,
+                raw = awaitResponse(normalizedCommand, effectiveTimeout),
+                normalization = normalization,
+            )
         }
     }
 
@@ -94,8 +104,12 @@ class ElmChannel(
         return if (promptAt >= 0) raw.substring(0, promptAt) else raw.toString()
     }
 
-    private fun interpret(command: String, raw: String): String {
-        val payload = StringBuilder()
+    private fun interpret(
+        command: String,
+        raw: String,
+        normalization: ElmResponseNormalization,
+    ): String {
+        val lines = mutableListOf<String>()
         var echoStillPossible = true
 
         for (line in raw.split('\r', '\n')) {
@@ -115,10 +129,15 @@ class ElmChannel(
             // Informational banner, not a result.
             if (upper.startsWith(SEARCHING)) continue
 
-            payload.append(trimmed.filterNot { it.isWhitespace() })
+            lines += trimmed
         }
 
-        return payload.toString()
+        return when (normalization) {
+            ElmResponseNormalization.HEX -> lines.joinToString(separator = "") { line ->
+                line.filterNot { character -> character.isWhitespace() }
+            }
+            ElmResponseNormalization.TEXT -> lines.joinToString(separator = " ")
+        }
     }
 
     private fun errorFor(line: String, command: String, raw: String): ElmException? = when {

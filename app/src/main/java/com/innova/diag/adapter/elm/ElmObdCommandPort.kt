@@ -4,7 +4,8 @@ import com.innova.diag.domain.obd.DiagnosticResult
 import com.innova.diag.domain.obd.ObdCommandPort
 
 /**
- * Binds the domain's [ObdCommandPort] to a live [ElmChannel].
+ * Binds the domain's [ObdCommandPort] to a live [ElmChannel] (or to anything else implementing
+ * [ElmCommandChannel], such as the recording wrapper).
  *
  * This is the seam where an adapter-level failure becomes a domain-level result, and it is the only
  * place in the codebase that knows both vocabularies. The mapping is deliberately many-to-one in one
@@ -20,7 +21,7 @@ import com.innova.diag.domain.obd.ObdCommandPort
  * Cancellation is **not** caught — a cancelled coroutine is not a vehicle condition, and turning it
  * into a result would let callers treat an interrupted exchange as a reading.
  */
-class ElmObdCommandPort(private val channel: ElmChannel) : ObdCommandPort {
+class ElmObdCommandPort(private val channel: ElmCommandChannel) : ObdCommandPort {
 
     override suspend fun execute(command: String): DiagnosticResult<String> {
         val text = try {

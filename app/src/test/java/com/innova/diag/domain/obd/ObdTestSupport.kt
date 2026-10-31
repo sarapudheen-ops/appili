@@ -6,18 +6,28 @@ package com.innova.diag.domain.obd
  * They exist so a failing test says *which* [DiagnosticResult] variant actually came back: "expected
  * 1672.0 but got NoResponse" is a diagnosis, whereas "expected true, got false" is a puzzle.
  */
-internal fun <T> DiagnosticResult<T>.requireSuccess(what: String = "decode"): DiagnosticResult.Success<T> =
-    when (this) {
-        is DiagnosticResult.Success -> this
-        else -> throw AssertionError("$what was expected to succeed but produced ${variantName()}")
-    }
 
-internal fun DiagnosticResult<*>.variantName(): String = when (this) {
-    is DiagnosticResult.Success -> "Success(${data})"
-    DiagnosticResult.Unsupported -> "Unsupported"
-    DiagnosticResult.NoResponse -> "NoResponse"
-    DiagnosticResult.Timeout -> "Timeout"
-    is DiagnosticResult.Malformed -> "Malformed(${rawHex})"
+/**
+ * Returns the [DiagnosticResult.Success] box so tests can read both `data` and `rawHex`.
+ *
+ * The cast is checked by hand (`dataOrNull == null` is true for every failure variant, since no
+ * payload type in this codebase is nullable), which is why it is suppressed rather than left as an
+ * unguarded `as`.
+ */
+@Suppress("UNCHECKED_CAST")
+internal fun <T> DiagnosticResult<T>.requireSuccess(what: String = "decode"): DiagnosticResult.Success<T> {
+    if (dataOrNull == null) {
+        throw AssertionError("$what was expected to succeed but produced ${variantName()}")
+    }
+    return this as DiagnosticResult.Success<T>
+}
+
+internal fun DiagnosticResult<*>.variantName(): String = when {
+    dataOrNull != null -> "Success(${dataOrNull})"
+    this is DiagnosticResult.Malformed -> "Malformed(${rawText})"
+    this is DiagnosticResult.Unsupported -> "Unsupported"
+    this is DiagnosticResult.Timeout -> "Timeout"
+    else -> "NoResponse"
 }
 
 internal fun DiagnosticResult<*>.assertNoResponse(what: String) {

@@ -1,5 +1,7 @@
 package com.innova.diag
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,35 +14,38 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.innova.diag.platform.bluetooth.BLUETOOTH_RUNTIME_PERMISSIONS
 import com.innova.diag.ui.AppTheme
-import com.innova.diag.ui.BluetoothShellScreen
-import com.innova.diag.ui.BluetoothShellViewModel
+import com.innova.diag.ui.DiagnosticsApp
+import com.innova.diag.ui.DiagnosticsViewModel
+import com.innova.diag.ui.SessionExportPayload
 
 /**
- * Single-activity host for the adapter screen.
+ * Single-activity host.
  *
- * Runtime permissions are requested here, at the Android boundary, and the result is pushed into
- * the injected permission provider. The transport itself never touches the permission API.
+ * Two Android-only responsibilities live here, at the boundary: runtime permissions and the share
+ * sheet. Neither leaks into the view model or the domain.
  */
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: BluetoothShellViewModel by viewModels()
+    private val viewModel: DiagnosticsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            AppTheme { BluetoothShellRoute(viewModel) }
+            AppTheme { DiagnosticsRoute(viewModel) }
         }
     }
 }
 
 @Composable
-private fun BluetoothShellRoute(viewModel: BluetoothShellViewModel) {
+private fun DiagnosticsRoute(viewModel: DiagnosticsViewModel) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions(),
@@ -60,7 +65,12 @@ private fun BluetoothShellRoute(viewModel: BluetoothShellViewModel) {
         viewModel.onPermissionsChanged()
     }
 
-    BluetoothShellScreen(
+    // Polling the vehicle with nobody watching is pure cost: stop it when the host leaves the screen.
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        viewModel.onHostStopped()
+    }
+
+    DiagnosticsApp(
         state = state,
         onRequestPermissions = {
             permissionLauncher.launch(BLUETOOTH_RUNTIME_PERMISSIONS.toTypedArray())
@@ -68,6 +78,35 @@ private fun BluetoothShellRoute(viewModel: BluetoothShellViewModel) {
         onRefreshDevices = viewModel::refreshPairedDevices,
         onSelectDevice = viewModel::selectDevice,
         onConnect = viewModel::connect,
+        onConnectDemo = viewModel::connectDemoAdapter,
         onDisconnect = viewModel::disconnect,
+        onScan = viewModel::scan,
+        onToggleLiveData = {
+            if (state.live.polling) viewModel.stopLiveData() else viewModel.startLiveData()
+        },
+        onSendRawCommand = viewModel::sendRawCommand,
+        onExport = { format ->
+            val payload = viewModel.buildExport(format)
+            if (payload != null) shareSessionLog(context, payload)
+        },
+        onSelectScreen = viewModel::navigateTo,
+        onDismissMessage = viewModel::dismissMessage,
     )
+}
+
+/**
+ * Hands the log to the platform share sheet as text.
+ *
+ * No file is written and no storage permission is requested: the payload is already sanitized
+ * (`SessionSanitizer`), so sharing it cannot leak a VIN or a Bluetooth address by way of a forgotten
+ * cache file.
+ */
+private fun shareSessionLog(context: Context, payload: SessionExportPayload) {
+    val intent = Intent(Intent.ACTION_SEND).apply {
+        type = payload.mimeType
+        putExtra(Intent.EXTRA_SUBJECT, payload.fileName)
+        putExtra(Intent.EXTRA_TITLE, payload.fileName)
+        putExtra(Intent.EXTRA_TEXT, payload.text)
+    }
+    context.startActivity(Intent.createChooser(intent, "Share ${payload.fileName}"))
 }

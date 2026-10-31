@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Debug-only manifest overlay.
+
+    It points the application at a class that installs the scripted adapter (see DemoByteTransport).
+    A release build has neither the class nor the hook, so "demo mode" is absent rather than disabled.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application android:name="com.innova.diag.DebugAppiliApp" />
+
+</manifest>

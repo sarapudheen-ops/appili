@@ -2,6 +2,7 @@ package com.innova.diag.domain.obd
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -53,9 +54,9 @@ class Mode01DecodersTest {
     fun `NO DATA decodes to NoResponse and never to zero`() {
         val result = Mode01Decoders.engineRpm("NO DATA")
 
-        assertFalse(
+        assertNull(
             "a silent ECU must not be reported as a measurement",
-            result is DiagnosticResult.Success,
+            result.dataOrNull,
         )
         result.assertNoResponse("the adapter's NO DATA")
     }
@@ -72,10 +73,18 @@ class Mode01DecodersTest {
         )
 
         for (failure in failures) {
-            assertFalse("$failure must not decode to a value", Mode01Decoders.engineRpm(failure) is DiagnosticResult.Success)
-            assertFalse("$failure must not decode to a value", Mode01Decoders.vehicleSpeedKph(failure) is DiagnosticResult.Success)
-            assertFalse("$failure must not decode to a value", Mode01Decoders.coolantTemperatureCelsius(failure) is DiagnosticResult.Success)
+            assertNull("$failure must not decode to a value", Mode01Decoders.engineRpm(failure).dataOrNull)
+            assertNull("$failure must not decode to a value", Mode01Decoders.vehicleSpeedKph(failure).dataOrNull)
+            assertNull("$failure must not decode to a value", Mode01Decoders.coolantTemperatureCelsius(failure).dataOrNull)
         }
+    }
+
+    @Test
+    fun `a whitespace-stripped NO DATA is still NoResponse`() {
+        // A HEX-normalized response has already lost its spaces, so the guard must match "NODATA" too;
+        // otherwise a silent ECU could only be caught by the channel, not by the decoder.
+        Mode01Decoders.engineRpm("NODATA").assertNoResponse("hex-normalized NO DATA")
+        Mode01Decoders.vehicleSpeedKph("BUSERROR").assertNoResponse("hex-normalized BUS ERROR")
     }
 
     @Test

@@ -35,6 +35,8 @@ android {
 
     buildFeatures {
         compose = true
+        // BuildConfig.DEBUG gates the raw AT console and the scripted (demo) adapter.
+        buildConfig = true
     }
 }
 

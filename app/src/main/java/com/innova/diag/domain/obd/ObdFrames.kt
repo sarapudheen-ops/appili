@@ -26,22 +26,27 @@ internal object ObdFrames {
      * silent), which is why they are parsed here rather than only inside the adapter layer: a
      * replayed transcript must produce exactly the same verdict as a live link.
      *
+     * ### Why whitespace is ignored
+     * A `HEX`-normalized response has already lost its spaces, so the adapter's `NO DATA` arrives here
+     * as `NODATA`. Matching on the space-free form keeps this guard effective whichever normalization
+     * the caller used, instead of depending on the channel having thrown first.
+     *
      * @return the terminal result, or `null` when the text looks like hex and should be parsed.
      */
     fun <T> adapterFailure(raw: String): DiagnosticResult<T>? {
         val text = raw.trim()
         if (text.isEmpty()) return DiagnosticResult.NoResponse
 
-        val upper = text.uppercase()
+        val compact = text.uppercase().filterNot { character -> character.isWhitespace() }
         return when {
-            upper.startsWith("NO DATA") -> DiagnosticResult.NoResponse
-            upper.startsWith("UNABLE TO CONNECT") -> DiagnosticResult.NoResponse
-            upper.startsWith("BUS ERROR") -> DiagnosticResult.NoResponse
-            upper.startsWith("CAN ERROR") -> DiagnosticResult.NoResponse
-            upper.startsWith("BUFFER FULL") -> DiagnosticResult.NoResponse
-            upper.startsWith("STOPPED") -> DiagnosticResult.NoResponse
-            upper.startsWith("SEARCHING") -> DiagnosticResult.NoResponse
-            upper.startsWith("?") -> DiagnosticResult.Malformed(text)
+            compact.startsWith("NODATA") -> DiagnosticResult.NoResponse
+            compact.startsWith("UNABLETOCONNECT") -> DiagnosticResult.NoResponse
+            compact.startsWith("BUSERROR") -> DiagnosticResult.NoResponse
+            compact.startsWith("CANERROR") -> DiagnosticResult.NoResponse
+            compact.startsWith("BUFFERFULL") -> DiagnosticResult.NoResponse
+            compact.startsWith("STOPPED") -> DiagnosticResult.NoResponse
+            compact.startsWith("SEARCHING") -> DiagnosticResult.NoResponse
+            compact.startsWith("?") -> DiagnosticResult.Malformed(text)
             else -> null
         }
     }

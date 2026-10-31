@@ -2,6 +2,7 @@ package com.innova.diag.domain.obd
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -70,7 +71,7 @@ class VinDecoderTest {
         val result = VinDecoder.decode("NO DATA")
 
         result.assertNoResponse("the adapter's NO DATA")
-        assertFalse(result is DiagnosticResult.Success)
+        assertNull("a missing VIN is not an empty string", result.dataOrNull)
     }
 
     @Test

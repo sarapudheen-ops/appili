@@ -27,7 +27,7 @@ package com.innova.diag.adapter.elm
  * never sees a "partly initialized" adapter reported as success.
  */
 class ElmInitializer(
-    private val channel: ElmChannel,
+    private val channel: ElmCommandChannel,
     private val resetTimeoutMillis: Long = DEFAULT_RESET_TIMEOUT_MILLIS,
 ) {
 

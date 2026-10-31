@@ -2,6 +2,7 @@ package com.innova.diag.domain.obd
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -18,14 +19,14 @@ class DiagnosticResultTest {
         val success = zero.requireSuccess("a stationary vehicle")
 
         assertEquals(0, success.data)
-        assertFalse("a reported zero is a measurement, not a failure", zero is DiagnosticResult.NoResponse)
+        assertTrue("a reported zero is a measurement, not a failure", zero !is DiagnosticResult.NoResponse)
     }
 
     @Test
     fun `the absence of an answer is not a Success and carries no value`() {
         val noResponse: DiagnosticResult<Int> = DiagnosticResult.NoResponse
 
-        assertFalse(noResponse is DiagnosticResult.Success)
+        assertNull("NoResponse carries no value", noResponse.dataOrNull)
         assertEquals("NoResponse", noResponse.variantName())
     }
 

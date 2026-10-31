@@ -2,6 +2,7 @@ package com.innova.diag.domain.obd
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -93,9 +94,9 @@ class SupportedPidsTest {
     fun `NO DATA for a bank is NoResponse, not an empty set`() {
         Mode01Decoders.supportedPids("NO DATA", 0x00).assertNoResponse("bank 0x00")
 
-        assertFalse(
+        assertNull(
             "an unanswered bank must not look like 'nothing supported'",
-            Mode01Decoders.supportedPids("NO DATA", 0x00) is DiagnosticResult.Success,
+            Mode01Decoders.supportedPids("NO DATA", 0x00).dataOrNull,
         )
     }
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Framework theme only: Compose owns all visual styling. Kept dependency-free so the
+        skeleton does not pull in the Material Components view library.
+    -->
+    <style name="Theme.Appili" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

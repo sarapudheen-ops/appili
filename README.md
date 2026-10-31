@@ -9,22 +9,37 @@ Pilot vehicle: 2007 Toyota Innova (GCC). **Read-only toward physical vehicles** 
 | Phase | State |
 |---|---|
 | Governance & safety docs | Complete — [`docs/`](docs) |
-| Android skeleton + transport contracts | Implemented; **build gate not yet executed** (see [`docs/ASSUMPTIONS.md`](docs/ASSUMPTIONS.md) A9) |
-| Adapter engine (ELM/STN), OBD/UDS parsing | Not started |
+| Android skeleton + transport contracts | Complete (build gate unrun — A9) |
+| Bluetooth Classic RFCOMM transport | Implemented: socket only, **no AT/ELM commands** |
+| Adapter engine (ELM/STN), OBD/UDS parsing | Not started — blocked by unverified vehicle matrix |
 
-No Bluetooth permission is declared and no physical connection path exists: every vehicle-specific
-field in [`docs/VEHICLE_MATRIX.md`](docs/VEHICLE_MATRIX.md) is still `UNKNOWN - PENDING_PHYSICAL_LOG`.
+Opening an RFCOMM socket is transport plumbing: it sends zero bytes and assumes no protocol. Every
+vehicle-specific field in [`docs/VEHICLE_MATRIX.md`](docs/VEHICLE_MATRIX.md) is still
+`UNKNOWN - PENDING_PHYSICAL_LOG`, so no diagnostic operation is permitted yet.
 
 ## Layout
 
 ```
 app/src/main/java/com/innova/diag/
   core/transport/          # pure Kotlin: ByteTransport contract + TransportState (no Android imports)
-  core/transport/fake/     # FakeByteTransport: in-memory, injected delays, split streams, drops
-  ui/                      # Compose shell + ViewModel
-app/src/test/java/com/innova/diag/core/transport/
-                          # FakeByteTransport contract tests + raw byte fixtures
+  platform/bluetooth/      # RFCOMM transport, paired-device listing, permission provider
+  ui/                      # Compose adapter screen (paired devices -> explicit select -> connect)
+app/src/test/java/com/innova/diag/
+  core/transport/          # FakeByteTransport fixtures + contract tests
+  platform/bluetooth/      # transport/socket tests with mocked Android Bluetooth classes
 ```
+
+## Bluetooth behaviour
+
+- **Classic RFCOMM only**, SPP UUID `00001101-0000-1000-8000-00805F9B34FB`. BLE is out of scope.
+- **Paired devices only.** No discovery, no scan list, no name matching, no default selection.
+- **No commands on connect.** No `ATZ`/`ATE0`/`ATSP…`, no handshake beyond RFCOMM itself.
+- **Fail-closed.** Missing `BLUETOOTH_CONNECT`, Bluetooth off, no adapter, or no selection each
+  refuse the connect with a specific reason; nothing touches the radio before a user choice.
+- All blocking socket work runs on an injected IO dispatcher (default `Dispatchers.IO`).
+
+Android 12+ runtime permissions are requested at the activity boundary and read by the transport
+through an injected `BluetoothPermissionStateProvider`; the transport never calls the permission API.
 
 ## Build & verify
 

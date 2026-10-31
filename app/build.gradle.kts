@@ -54,11 +54,13 @@ dependencies {
     implementation(libs.compose.core)
     implementation(libs.compose.preview)
     implementation(libs.compose.material3)
+    implementation(libs.compose.foundation)
     debugImplementation(libs.compose.tooling)
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
 }

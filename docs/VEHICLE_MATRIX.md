@@ -112,11 +112,18 @@ All five required fields are `UNKNOWN - PENDING_PHYSICAL_LOG`. Therefore:
 | Level 2 on a physical vehicle | **UNAVAILABLE** |
 | Level 3 / Level 4 | **UNAVAILABLE** — simulator not in scope yet; and never bound to physical anyway |
 | Simulator operation | **UNAVAILABLE** — no simulator exists in this phase |
-| Any connection attempt to the physical adapter | Must be **denied** with the specific unmet field named in the message |
+| Any **diagnostic operation** on a physical vehicle (init sequence, header, PID/DID read, write) | Must be **denied** with the specific unmet field named in the message |
+| Opening a bare RFCOMM socket to the paired adapter | **Permitted** — transport plumbing only; zero bytes are sent, so no protocol is assumed |
 
 This is the intended outcome of the fail-closed design, not a bug. The application must not
 "try" a connection to discover the answer; discovery happens through a deliberate, logged
 physical capture procedure (§4) and lands here as verified data.
+
+**Amendment (phase 3).** Opening an RFCOMM socket is not a diagnostic operation: it transmits no
+bytes, votes for no protocol, and cannot "discover" anything the matrix does not already know. The
+transport may therefore open and close a socket to a *user-selected paired* device. Every
+diagnostic step built on top of it stays denied until the fields above are `VERIFIED`; the socket
+is plumbing, and plumbing is not permission.
 
 ---
 

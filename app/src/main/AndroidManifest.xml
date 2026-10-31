@@ -2,10 +2,26 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <!--
-        No permissions are declared in this phase. The transport layer is contract-only and the
-        UI runs against an in-memory fake. Bluetooth permissions will be added in the adapter
-        phase, together with the physical verification evidence required by docs/VEHICLE_MATRIX.md.
+        Bluetooth Classic (RFCOMM only). BLE is out of scope for this phase.
+
+        Android 12+ requires the runtime "Nearby devices" permissions; below 12 the legacy pair is
+        granted at install time, so it is capped at API 30 to avoid requesting dead grants.
     -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+
+    <!-- The app is useless without Bluetooth, but declaring it optional keeps installs possible. -->
+    <uses-feature
+        android:name="android.hardware.bluetooth"
+        android:required="false" />
 
     <application
         android:allowBackup="false"

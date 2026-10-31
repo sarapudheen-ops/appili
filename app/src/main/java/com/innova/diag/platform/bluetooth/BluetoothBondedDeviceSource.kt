@@ -59,7 +59,7 @@ class BluetoothBondedDeviceSource(
                 .map { device -> PairedDevice(name = device.name, address = device.address) }
                 .sortedWith(compareBy({ it.name == null }, { it.name ?: it.address }))
             BondedDevicesResult.Available(paired)
-        } catch (_: SecurityException) {
+        } catch (revoked: SecurityException) {
             // Permission revoked between the check and the call: fail closed, do not retry blindly.
             BondedDevicesResult.Unavailable("Bluetooth permission was denied.")
         }

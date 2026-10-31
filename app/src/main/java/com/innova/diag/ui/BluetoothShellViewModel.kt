@@ -89,7 +89,7 @@ class BluetoothShellViewModel(application: Application) : AndroidViewModel(appli
                 transport.connect()
             } catch (cancellation: CancellationException) {
                 throw cancellation
-            } catch (_: Throwable) {
+            } catch (ignored: Throwable) {
                 // Published as TransportState.ERROR already; the screen reads it from there.
             }
         }

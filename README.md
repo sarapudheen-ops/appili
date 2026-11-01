@@ -1,5 +1,7 @@
 # appili
 
+[![Android CI](https://github.com/sarapudheen-ops/appili/actions/workflows/build.yml/badge.svg)](https://github.com/sarapudheen-ops/appili/actions/workflows/build.yml)
+
 Safety-critical Android OBD-II diagnostics for the Vgate vLinker MC+ adapter.
 Pilot vehicle: 2007 Toyota Innova (GCC). **Read-only toward physical vehicles** — see
 [`docs/PRODUCT_SCOPE.md`](docs/PRODUCT_SCOPE.md).
@@ -269,6 +271,12 @@ instead, statically and mechanically:
 - An identifier audit over `app/src/**/*.kt`: no unresolved capitalised reference.
 - The demo transcript driven through a mirror of the channel → decoder → `Readings` pipeline, which
   reproduces exactly the values in the demo section above (including that `0105` is never written).
+
+CI exists for exactly that reason: [`.github/workflows/build.yml`](.github/workflows/build.yml) runs
+`./gradlew clean lintDebug testDebugUnitTest assembleDebug` on **JDK 17 + Android SDK** for every push
+and pull request, and the badge at the top of this file reports its real result — red means the gate
+failed, and no badge means it has not run yet. A green run is the evidence this section is waiting for;
+until one exists, the honest status of the gate in this repository remains "unrun here".
 
 Treat the gate as the first thing to run on a machine with a JDK.
 

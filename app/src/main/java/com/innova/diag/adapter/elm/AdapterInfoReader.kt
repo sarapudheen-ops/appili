@@ -37,7 +37,9 @@ class AdapterInfoReader(private val channel: ElmCommandChannel) {
         } catch (failure: ElmException) {
             return failure.toDiagnosticResult()
         }
-        if (raw.isEmpty()) return DiagnosticResult.NoResponse
+        // Whitespace is not an answer: a blank response is "the adapter said nothing", which is
+        // NoResponse. Reporting Malformed here would imply bytes arrived and could not be read.
+        if (raw.isBlank()) return DiagnosticResult.NoResponse
         val parsed = parse(raw) ?: return DiagnosticResult.Malformed(raw)
         return DiagnosticResult.Success(parsed, raw)
     }
@@ -75,10 +77,14 @@ object AdapterInfoText {
 
     private fun firstMeaningfulLine(raw: String): String? = raw
         .lines()
+        // The banner is usually its own line, but some adapters and some firmware revisions print
+        // "SEARCHING... ELM327 v1.5" on one line, so strip the banner before looking for content.
+        .map { line -> SEARCHING_BANNER.replace(line, " ") }
         .map { line -> line.trim() }
         .map { line -> line.split(WHITESPACE_RUN).filter { it.isNotEmpty() }.joinToString(" ") }
         .firstOrNull { line -> line.isNotEmpty() && !line.uppercase().startsWith(SEARCHING) }
 
     private val WHITESPACE_RUN = Regex("\\s+")
+    private val SEARCHING_BANNER = Regex("(?i)SEARCHING[.]*")
     private const val SEARCHING = "SEARCHING"
 }

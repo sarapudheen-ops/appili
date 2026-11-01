@@ -72,9 +72,12 @@ class ElmInitializerTest {
 
         val commands = transport.writes.map { it.decodeToString().trim() }
         assertTrue("only adapter commands are allowed here", commands.all { it.startsWith("AT") })
+        // "Starts with a hex character" is not the test: ATZ/ATE0/ATL0/ATS0/ATSP0 all start with
+        // 'A', which is hex. A bare OBD request is a whole hex string (0100, 03, 0902), so match
+        // the entire command instead.
         assertTrue(
-            "no bare hex request (PID / mode) may be issued in this phase",
-            commands.none { Regex("^[0-9A-Fa-f]").containsMatchIn(it) },
+            "no bare hex request (PID / mode) may be issued in this phase: $commands",
+            commands.none { command -> Regex("^[0-9A-Fa-f]{2,}$").matches(command) },
         )
     }
 

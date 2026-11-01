@@ -153,13 +153,28 @@ sealed interface DiagnosticResult<out T> {
  */
 internal inline fun <T, R> DiagnosticResult<T>.mapData(
     crossinline transform: (T) -> DiagnosticResult<R>,
-): DiagnosticResult<R> = fold(
-    onSuccess = { data, _ -> transform(data) },
-    onUnsupported = { DiagnosticResult.Unsupported },
-    onNoResponse = { DiagnosticResult.NoResponse },
-    onTimeout = { DiagnosticResult.Timeout },
-    onMalformed = { rawHex -> DiagnosticResult.Malformed(rawHex) },
-)
+): DiagnosticResult<R> {
+    val self = this
+    return fold(
+        onSuccess = { data, _ -> transform(data) },
+        onUnsupported = { self.untouched() },
+        onNoResponse = { self.untouched() },
+        onTimeout = { self.untouched() },
+        onMalformed = { self.untouched() },
+    )
+}
+
+/**
+ * The same failure instance, retyped.
+ *
+ * Only ever called from the failure branches of [mapData] / [mapSuccess]. Every failure variant is a
+ * `DiagnosticResult<Nothing>` and the interface is covariant, so nothing about the value can change —
+ * which is exactly why a failure must not be rebuilt: `Malformed("41 0C")` re-wrapped is a *different*
+ * object, and a test that asserts identity catches the day someone starts losing the evidence.
+ */
+@Suppress("UNCHECKED_CAST")
+internal fun <T, R> DiagnosticResult<T>.untouched(): DiagnosticResult<R> =
+    this as DiagnosticResult<R>
 
 /**
  * Applies [transform] to a [DiagnosticResult.Success] payload, **keeping** its `rawHex`.
@@ -169,10 +184,13 @@ internal inline fun <T, R> DiagnosticResult<T>.mapData(
  */
 internal inline fun <T, R> DiagnosticResult<T>.mapSuccess(
     crossinline transform: (T) -> R,
-): DiagnosticResult<R> = fold(
-    onSuccess = { data, rawHex -> DiagnosticResult.Success(transform(data), rawHex) },
-    onUnsupported = { DiagnosticResult.Unsupported },
-    onNoResponse = { DiagnosticResult.NoResponse },
-    onTimeout = { DiagnosticResult.Timeout },
-    onMalformed = { rawHex -> DiagnosticResult.Malformed(rawHex) },
-)
+): DiagnosticResult<R> {
+    val self = this
+    return fold(
+        onSuccess = { data, rawHex -> DiagnosticResult.Success(transform(data), rawHex) },
+        onUnsupported = { self.untouched() },
+        onNoResponse = { self.untouched() },
+        onTimeout = { self.untouched() },
+        onMalformed = { self.untouched() },
+    )
+}

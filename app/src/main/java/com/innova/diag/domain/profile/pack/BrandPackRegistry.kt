@@ -109,7 +109,7 @@ class BrandPackRegistry private constructor(private val brands: List<BrandPack>)
          * Problems are aggregated: the thrown [PackValidationException] carries one entry per violation
          * so a single load reports everything that is wrong.
          */
-        fun fromDocuments(documents: Map<String, String>, schema: PackSchema): BrandPackRegistry {
+        internal fun fromDocuments(documents: Map<String, String>, schema: PackSchema): BrandPackRegistry {
             if (documents.isEmpty()) {
                 throw PackValidationException("no brand packs found; an empty catalogue is not a valid state")
             }

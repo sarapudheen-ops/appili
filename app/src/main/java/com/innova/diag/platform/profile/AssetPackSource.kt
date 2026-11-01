@@ -9,7 +9,8 @@ import com.innova.diag.domain.profile.pack.PackSource
  * The only Android-aware part of pack loading: the registry itself is pure Kotlin and takes a
  * [PackSource], which is what lets every registry test run on a plain JVM with a map of strings.
  *
- * @param root asset directory holding `brands/*.json` and `schema/vehicle_pack_schema_v2.json`.
+ * @param root asset directory holding the `brands` pack directory and the `schema` directory, whose
+ *   only file is [SCHEMA_FILE].
  */
 class AssetPackSource(
     private val assets: AssetManager,

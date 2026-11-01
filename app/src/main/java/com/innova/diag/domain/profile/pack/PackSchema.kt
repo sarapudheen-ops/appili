@@ -33,7 +33,7 @@ class PackSchemaException(message: String, cause: Throwable? = null) : Exception
  * `pattern`, `minLength`, `maxLength`, `minItems`, `maxItems`, `uniqueItems`, `items`, `minimum`,
  * `maximum`. Ignored (documentation only): `$schema`, `$id`, `title`, `description`.
  */
-class PackSchema private constructor(private val root: JsonValue.Obj) {
+internal class PackSchema private constructor(private val root: JsonValue.Obj) {
 
     /**
      * Validates [document] against the schema.

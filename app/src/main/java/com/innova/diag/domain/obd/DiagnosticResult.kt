@@ -152,7 +152,7 @@ sealed interface DiagnosticResult<out T> {
  * untouched, so a failure can never be silently upgraded to a value.
  */
 internal inline fun <T, R> DiagnosticResult<T>.mapData(
-    transform: (T) -> DiagnosticResult<R>,
+    crossinline transform: (T) -> DiagnosticResult<R>,
 ): DiagnosticResult<R> = fold(
     onSuccess = { data, _ -> transform(data) },
     onUnsupported = { DiagnosticResult.Unsupported },
@@ -168,7 +168,7 @@ internal inline fun <T, R> DiagnosticResult<T>.mapData(
  * must survive: `rawHex` is the audit trail, and re-wrapping without it would quietly drop evidence.
  */
 internal inline fun <T, R> DiagnosticResult<T>.mapSuccess(
-    transform: (T) -> R,
+    crossinline transform: (T) -> R,
 ): DiagnosticResult<R> = fold(
     onSuccess = { data, rawHex -> DiagnosticResult.Success(transform(data), rawHex) },
     onUnsupported = { DiagnosticResult.Unsupported },

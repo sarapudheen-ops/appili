@@ -39,22 +39,27 @@ jobs:
       - name: Failure detail
         if: failure()
         run: |
-          # The gate is one command; when it fails, the reason is somewhere in a long log.
-          # Re-emit the interesting lines as annotations so the failure is readable in the
-          # run summary instead of being buried.
-          echo "--- environment ---"
-          java -version 2>&1 || true
+          echo "java: $(java -version 2>&1 | head -n 1)"
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
-          echo "--- failing tasks / errors ---"
-          grep -nE '(^e: |> Task .*FAILED|^FAILURE:|^> .*|error:|FAILED)' gradle.log 2>/dev/null | tail -n 40 || true
-          echo "--- tail of the log ---"
-          tail -n 30 gradle.log 2>/dev/null || true
-          if [ -f gradle.log ]; then
-            grep -nE '(^e: |> Task .*FAILED|^FAILURE:|^> |error:|FAILED)' gradle.log | tail -n 35 | while IFS= read -r line; do
-              escaped="${line//%/%25}"
-              escaped="${escaped//$'\r'/%0D}"
-              escaped="${escaped//$'\n'/%0A}"
-              escaped="${escaped//: / - }"
-              echo "::error::${escaped}"
-            done
-          fi
+          # The gate is one command, so a failure is one line in a long log. Collect the
+          # informative lines — failing unit tests first, then compiler errors, the failed
+          # task and Gradle's own failure block — and re-emit them as annotations, which
+          # GitHub shows in the run summary (and caps at ten per step).
+          {
+            for report in app/build/test-results/testDebugUnitTest/*.xml; do
+              [ -e "$report" ] || continue
+              awk '/<testcase /{c="?"; if (match($0,/name="[^"]*"/)) c=substr($0,RSTART+6,RLENGTH-7)} /<failure /{m="failed"; if (match($0,/message="[^"]*"/)) m=substr($0,RSTART+9,RLENGTH-10); print "TEST " c " :: " substr(m,1,200)}' "$report"
+            done | head -n 4
+            if [ -f gradle.log ]; then
+              {
+                grep -E '^(e: )' gradle.log || true
+                grep -E '^> Task .* FAILED' gradle.log || true
+                awk '/^FAILURE:/{flag=1} flag' gradle.log | head -n 14 || true
+                tail -n 4 gradle.log || true
+              } | awk 'NF' | awk '!seen[$0]++' | head -n 6
+            fi
+          } > detail.txt
+          while IFS= read -r line; do
+            printf '%s\n' "$line"
+            printf '::error::%s\n' "${line//%/%25}"
+          done < detail.txt

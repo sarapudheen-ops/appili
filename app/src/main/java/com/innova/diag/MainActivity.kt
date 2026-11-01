@@ -22,8 +22,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.innova.diag.platform.bluetooth.BLUETOOTH_RUNTIME_PERMISSIONS
 import com.innova.diag.platform.profile.BrandCatalogue
 import com.innova.diag.ui.ActiveTestViewModel
+import com.innova.diag.ui.BrandPickerEvent
+import com.innova.diag.ui.BrandPickerViewModel
 import com.innova.diag.ui.AppTheme
 import com.innova.diag.ui.DiagnosticsApp
+import com.innova.diag.ui.DiagnosticsScreen
 import com.innova.diag.ui.DiagnosticsViewModel
 import com.innova.diag.ui.SessionExportPayload
 
@@ -39,7 +42,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         loadBrandCatalogue()
         setContent {
-            AppTheme { DiagnosticsRoute(viewModel, activeTestViewModel) }
+            AppTheme { DiagnosticsRoute(viewModel, activeTestViewModel, brandPickerViewModel) }
         }
     }
 
@@ -71,6 +74,14 @@ class MainActivity : ComponentActivity() {
     private val viewModel: DiagnosticsViewModel by viewModels()
 
     /**
+     * The brand picker. It reads the catalogue [loadBrandCatalogue] already validated — a `null`
+     * registry is the fail-closed case and the picker says so instead of inventing a brand.
+     */
+    private val brandPickerViewModel: BrandPickerViewModel by viewModels {
+        BrandPickerViewModel.factory { BrandCatalogue.registry }
+    }
+
+    /**
      * Bench-only. It owns a [com.innova.diag.domain.active.MockEcuSimulator], so nothing it can do
      * touches the Bluetooth transport the other view model drives.
      */
@@ -81,9 +92,11 @@ class MainActivity : ComponentActivity() {
 private fun DiagnosticsRoute(
     viewModel: DiagnosticsViewModel,
     activeTestViewModel: ActiveTestViewModel,
+    brandPickerViewModel: BrandPickerViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val activeTestState by activeTestViewModel.state.collectAsStateWithLifecycle()
+    val brandPickerState by brandPickerViewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -130,6 +143,15 @@ private fun DiagnosticsRoute(
         },
         onSelectScreen = viewModel::navigateTo,
         onDismissMessage = viewModel::dismissMessage,
+        brandPicker = brandPickerState,
+        onBrandPickerEvent = { event ->
+            brandPickerViewModel.onEvent(event)
+            // "Any Vehicle" is the only picker action that navigates: it goes straight to the generic
+            // scan, because there is no profile to look at first.
+            if (event is BrandPickerEvent.AnyVehicle) {
+                viewModel.navigateTo(DiagnosticsScreen.SCAN)
+            }
+        },
         activeTest = activeTestState,
         onActiveTestHoldStart = activeTestViewModel::holdStart,
         onActiveTestHoldEnd = activeTestViewModel::holdEnd,

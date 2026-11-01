@@ -5,6 +5,11 @@ import androidx.lifecycle.viewModelScope
 import com.innova.diag.adapter.elm.ElmActiveTestChannel
 import com.innova.diag.adapter.elm.ElmChannel
 import com.innova.diag.domain.active.ActiveTestController
+import com.innova.diag.domain.gate.AuditLog
+import com.innova.diag.domain.gate.GateRequest
+import com.innova.diag.domain.gate.OperationGate
+import com.innova.diag.domain.gate.OperationTarget
+import com.innova.diag.domain.profile.RiskClass
 import com.innova.diag.domain.active.MockEcuSimulator
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -39,6 +44,18 @@ class ActiveTestViewModel : ViewModel() {
     private val mutableState = MutableStateFlow(ActiveTestUiState())
     val state: StateFlow<ActiveTestUiState> = mutableState.asStateFlow()
 
+    /**
+     * The same gate the driving session uses, pointed at the bench.
+     *
+     * [ActiveTestController] already refuses to be constructed over a physical transport; asking the
+     * gate as well means the rule is expressed once, in one place, for every operation — and that a
+     * bench actuation leaves the same audit entry a refused one would.
+     */
+    private val gate = OperationGate()
+
+    /** Every actuation decision taken on this screen, permit or refusal. */
+    val audit: AuditLog get() = gate.audit
+
     private var holdJob: Job? = null
 
     init {
@@ -58,9 +75,25 @@ class ActiveTestViewModel : ViewModel() {
     /** The operator pressed and is holding. */
     fun holdStart() {
         if (holdJob?.isActive == true) return
+
+        val command = mutableState.value.command
+        val frame = command.activationFrame()
+        val allowed = gate.evaluate(
+            GateRequest(
+                operationId = "active_test." + frame.lowercase(),
+                riskClass = RiskClass.ACTIVE_TEST,
+                service = frame.take(2).toIntOrNull(16),
+                target = OperationTarget.Bench,
+            ),
+            simulator,
+        ).allowed
+        // A refusal means nothing was queued: the controller is never called, so no frame can reach
+        // even the simulator.
+        if (!allowed) return
+
         holdJob = viewModelScope.launch {
             try {
-                controller.hold(mutableState.value.command)
+                controller.hold(command)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (refused: IllegalStateException) {

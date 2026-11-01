@@ -14,6 +14,8 @@ import com.innova.diag.adapter.elm.ElmObdCommandPort
 import com.innova.diag.adapter.elm.RecordingCommandChannel
 import com.innova.diag.core.transport.ByteTransport
 import com.innova.diag.core.transport.TransportState
+import com.innova.diag.domain.gate.GatedObdCommandPort
+import com.innova.diag.domain.gate.OperationGate
 import com.innova.diag.domain.obd.DiagnosticResult
 import com.innova.diag.domain.obd.GenericScanService
 import com.innova.diag.domain.obd.ObdCommandPort
@@ -63,6 +65,15 @@ class DiagnosticsViewModel(application: Application) : AndroidViewModel(applicat
 
     /** Every command and response of this session, in order. Survives disconnect so it can be exported. */
     private val sessionLog = SessionLog()
+
+    /**
+     * The one decision point for anything this session transmits, and its audit trail.
+     *
+     * Public so the host can read [OperationGate.audit] — a refusal is evidence, not a private detail.
+     * The gate keeps the only veto: the port below consults it on every frame, and nothing above
+     * overrides an answer.
+     */
+    val gate: OperationGate = OperationGate()
 
     private val _uiState = MutableStateFlow(
         DiagnosticsUiState(
@@ -197,7 +208,16 @@ class DiagnosticsViewModel(application: Application) : AndroidViewModel(applicat
 
                 // One recording wrapper, one channel: every later command is logged and arbitrated.
                 val channel: ElmCommandChannel = RecordingCommandChannel(ElmChannel(transport), sessionLog)
-                val port: ObdCommandPort = ElmObdCommandPort(channel)
+
+                // Gated at the lowest layer: every frame the scan, the live-data loop, the DTC services
+                // and the debug console send passes the gate first. Adapter (`AT…`) commands are
+                // delegated untouched — they configure the interface, never the bus.
+                val port: ObdCommandPort = GatedObdCommandPort(
+                    delegate = ElmObdCommandPort(channel),
+                    gate = gate,
+                    transport = transport,
+                    sessionReady = { _uiState.value.sessionReady },
+                )
                 val adapterSession = AdapterSession(
                     channel = channel,
                     port = port,

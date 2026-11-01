@@ -251,6 +251,68 @@ What ships today (A68): twelve brands, all **T4**, and only `toyota` has a varia
 **No manufacturer command exists in any pack**, and `ShippedBrandPacksTest` drives every declared
 operation through the executor and asserts that not one command reaches the port.
 
+## Operation gate, transport guard and audit log
+
+The "may this be sent?" question now has exactly one answer, below every caller:
+
+```
+GateRequest      operationId, riskClass, service byte, target, ECU identity, session readiness
+OperationTarget  UniversalGeneric ("Any Vehicle") | Vehicle(VehicleVariantPack) | Bench
+GateDecision     Allowed | Denied(reason)
+                 reason ∈ PROFILE_UNVERIFIED, ECU_IDENTITY_MISMATCH, OPERATION_NOT_DEFINED,
+                          PHYSICAL_EXECUTION_DISABLED, TRANSPORT_NOT_CONNECTED, PRECONDITIONS_UNMET
+```
+
+`OperationGate.evaluate(request, transport)` reads two facts off the link through `TransportTypeGuard` —
+`PHYSICAL` for anything implementing `PhysicalTransport`, `SIMULATED` for `SimulatedTransport` (the shipped
+`MockEcuSimulator` now claims it), `IN_MEMORY` for an unmarked test double — and decides in a fixed order:
+
+1. **Physical link + write class → `PHYSICAL_EXECUTION_DISABLED`, before anything else.** The check runs
+   ahead of the link state and the profile, so neither a reconnect nor a better pack can unlock it. It is
+   the same rule `ActiveTestController` applies when it refuses to be constructed over a physical
+   transport, expressed once for every operation instead of one operation at a time.
+2. No open link → `TRANSPORT_NOT_CONNECTED`; no initialised session → `PRECONDITIONS_UNMET`.
+3. **L1 is universal**: modes `01`, `03`, `07` and `09` on a read-only request are allowed on *any* link at
+   *any* brand tier — a T4 brand cannot lose the emissions scan. Mode `04` is not one of them.
+4. Everything else depends on the target. "Any Vehicle" offers only L1, so anything above it is
+   `OPERATION_NOT_DEFINED`; the bench exists only inside the simulator; a vehicle must be `VERIFIED`, must
+   declare the operation, must declare the **same** risk class (a caller cannot relabel an actuation as a
+   read), must describe the ECU it addresses by name/part/network/addressing, and the operation must carry
+   captured bytes.
+5. Every decision — permit *and* refusal — is appended to `AuditLog`: monotonic sequence, timestamp,
+   operation id, variant id, transport type, reason. It is in memory and append-only, and it holds no VIN
+   and no Bluetooth address, so it can be shared exactly as it stands.
+
+**Where it is wired.** `GatedObdCommandPort` wraps the session's command port, so the generic scan, the
+live-data loop, the DTC services and the debug console all consult the gate before a frame is transmitted —
+one decision point rather than one per screen. `AT…` frames configure the adapter and never reach the bus,
+so they are delegated untouched (they are already constrained by `AtCommandGuard`). The bench screen
+evaluates the same gate with `OperationTarget.Bench` before it calls `ActiveTestController.hold`, which
+keeps the period-8 hardware lock untouched.
+
+**On `CONFIGURATION_WRITE`.** The risk class for coding on this platform is `RiskClass.CONFIGURATION`
+(`READ_ONLY | ACTIVE_TEST | CONFIGURATION`). It was not renamed to the brief's wording: it is consumed by
+`DiagnosticOperation`, `PackOperationExecutor` and the pack schema, and a rename would be a behavioural
+change dressed up as a vocabulary fix (A78).
+
+## Brand picker
+
+The first tab is **Vehicles**, and its top action is the one that needs no data at all:
+
+> **Any Vehicle — Generic OBD-II Only** — skips brand selection and goes straight to the generic scan.
+
+Below it, all twelve brands from `BrandPackRegistry`, sorted **T1 → T2 → T3 → T4** with the badge wording of
+`docs/VEHICLE_MATRIX.md` (`Full Enhanced`, `Partial Enhanced`, `Generic OBD-II Only`,
+`Unverified (Generic OBD-II Only)`). Selecting a brand shows its families and variants — including the 2007
+GCC Innova — with each variant's verification status and its OEM Enhanced / Active Test / Coding
+capabilities. On an `UNVERIFIED` variant those three are **text labels** reading
+`Unavailable — Unverified Profile`, never buttons: a control that cannot act is a lie told to a technician,
+and there is no dead clickable control anywhere on the screen (a brand with no declared variants shows no
+"Show families" button either).
+
+Selecting a brand changes what is **shown**, not what is **allowed**: every shipped pack is T4, the scan
+stays L1 generic OBD-II, and the gate below refuses everything else whatever the selection says (A82).
+
 ## Verification status
 
 The gate **runs on every push and pull request, and it passes**:
@@ -270,11 +332,13 @@ way; see below.
 What the suite covers, all against fake transports, replay strings, JSON fixtures and a bench ECU —
 never a device:
 
-- **317 JVM test methods across 31 test classes**: phases 1–6 (177 methods), the phase-7 profile tests
+- **365 JVM test methods across 35 test classes**: phases 1–6 (177 methods), the phase-7 profile tests
   (`VehicleProfileParserTest`, `ProfileOperationExecutorTest`, `ProfileModelTest`,
   `ToyotaInnovaProfileAssetTest`), the phase-8 active-test tests (`ActiveTestControllerTest`,
-  `MockEcuSimulatorTest`, `ActiveTestPresentationTest`) and the phase-9 pack tests (52 methods:
-  `BrandPackRegistryTest`, `PackSchemaTest`, `PackOperationExecutorTest`, `ShippedBrandPacksTest`).
+  `MockEcuSimulatorTest`, `ActiveTestPresentationTest`), the phase-9 pack tests (52 methods:
+  `BrandPackRegistryTest`, `PackSchemaTest`, `PackOperationExecutorTest`, `ShippedBrandPacksTest`) and the
+  phase-10 gate tests (48 methods: `OperationGateTest`, `AuditLogTest`, `TransportTypeGuardTest`,
+  `BrandPickerViewModelTest`).
 - The phase-9 shipped assets are checked against the real schema and the model invariants by test and by
   an independent script (12 packs: no `null`, no `""`, no duplicate ids, no `VERIFIED` claim, no
   non-`READ_ONLY` operation, no frame outside the generic set).

@@ -1,6 +1,6 @@
 package com.innova.diag.domain.active
 
-import com.innova.diag.core.transport.ByteTransport
+import com.innova.diag.core.transport.SimulatedTransport
 import com.innova.diag.core.transport.TransportState
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -19,6 +19,9 @@ import kotlinx.coroutines.flow.receiveAsFlow
  * real module: the responses are the ISO 14229 *shapes* (positive response = SID + 0x40, negative
  * response = `7F <SID> <NRC>`), and it is explicitly **not** a [com.innova.diag.core.transport.PhysicalTransport],
  * so the hardware lock in [ActiveTestController] does not fire.
+ *
+ * It *is* a [SimulatedTransport], and that is a claim the gate checks: it says "there is no bus behind
+ * this object", which is the only reason an actuation may run here (`OperationGate`, `AGENTS.md` Rule 2).
  *
  * ### What it answers
  * | Request | Response | Meaning |
@@ -41,7 +44,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
  */
 class MockEcuSimulator(
     private val responseDelayMillis: Long = 0L,
-) : ByteTransport {
+) : SimulatedTransport {
 
     private val currentState = MutableStateFlow<TransportState>(TransportState.DISCONNECTED)
     private val inbound = Channel<ByteArray>(capacity = Channel.UNLIMITED)

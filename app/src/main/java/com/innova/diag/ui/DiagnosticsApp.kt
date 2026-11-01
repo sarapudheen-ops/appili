@@ -50,6 +50,8 @@ fun DiagnosticsApp(
     onExport: (SessionExportFormat) -> Unit,
     onSelectScreen: (DiagnosticsScreen) -> Unit,
     onDismissMessage: () -> Unit,
+    brandPicker: BrandPickerState,
+    onBrandPickerEvent: (BrandPickerEvent) -> Unit,
     activeTest: ActiveTestUiState,
     onActiveTestHoldStart: () -> Unit,
     onActiveTestHoldEnd: () -> Unit,
@@ -101,6 +103,11 @@ fun DiagnosticsApp(
 
             Column(modifier = Modifier.weight(1f)) {
                 when (state.screen) {
+                    DiagnosticsScreen.BRANDS -> BrandPickerScreen(
+                        state = brandPicker,
+                        onEvent = onBrandPickerEvent,
+                    )
+
                     DiagnosticsScreen.CONNECTION -> ConnectionScreen(
                         state = state,
                         onRequestPermissions = onRequestPermissions,
@@ -208,6 +215,8 @@ private fun DiagnosticsAppPreview() {
             onExport = {},
             onSelectScreen = {},
             onDismissMessage = {},
+            brandPicker = BrandPickerState(),
+            onBrandPickerEvent = {},
             activeTest = ActiveTestUiState(transportState = TransportState.CONNECTED),
             onActiveTestHoldStart = {},
             onActiveTestHoldEnd = {},

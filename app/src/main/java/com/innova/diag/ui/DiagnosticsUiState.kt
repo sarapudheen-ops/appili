@@ -8,6 +8,13 @@ import com.innova.diag.platform.bluetooth.PairedDevice
 
 /** The screens. Plain state, not a navigation graph: there is nothing to deep-link. */
 enum class DiagnosticsScreen(val tabLabel: String) {
+
+    /**
+     * The brand picker, and the first tab: "Any Vehicle — Generic OBD-II Only" is the fastest path to
+     * a scan and needs no profile at all. It is a peer of the other screens rather than a gate in
+     * front of them — nothing forces a brand choice before a generic scan can run.
+     */
+    BRANDS("Vehicles"),
     CONNECTION("Connection"),
     SCAN("Scan"),
     LIVE_DATA("Live data"),

@@ -133,7 +133,7 @@ class BluetoothClassicTransportTest {
 
         assertTrue(refusal is BluetoothTransportException.PermissionDenied)
         assertEquals(TransportState.ERROR(refusal as Throwable), transport.state().value)
-        verify(exactly = 0) { adapter.getRemoteDevice(any()) }
+        verify(exactly = 0) { adapter.getRemoteDevice(any<String>()) }
         verify(exactly = 0) { device.createRfcommSocketToServiceRecord(any()) }
         verify(exactly = 0) { socket.connect() }
     }
@@ -147,7 +147,7 @@ class BluetoothClassicTransportTest {
         assertTrue(refusal is BluetoothTransportException.NoDeviceSelected)
         // Nothing about the vehicle or the radio is touched before a choice exists.
         verify(exactly = 0) { adapter.isEnabled }
-        verify(exactly = 0) { adapter.getRemoteDevice(any()) }
+        verify(exactly = 0) { adapter.getRemoteDevice(any<String>()) }
     }
 
     @Test
@@ -159,7 +159,7 @@ class BluetoothClassicTransportTest {
         val refusal = runCatching { transport.connect() }.exceptionOrNull()
 
         assertTrue(refusal is BluetoothTransportException.Disabled)
-        verify(exactly = 0) { adapter.getRemoteDevice(any()) }
+        verify(exactly = 0) { adapter.getRemoteDevice(any<String>()) }
     }
 
     // --- Read loop ----------------------------------------------------------

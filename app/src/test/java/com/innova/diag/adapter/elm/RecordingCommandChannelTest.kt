@@ -20,7 +20,7 @@ class RecordingCommandChannelTest {
     fun `a successful exchange is recorded with its response and timestamps`() = runTest {
         val log = SessionLog(clock = { 0L })
         val channel = RecordingCommandChannel(
-            delegate = FixedChannel { "ELM327 v1.5" },
+            delegate = FixedChannel("ELM327 v1.5"),
             log = log,
             clock = { 4_242L },
         )

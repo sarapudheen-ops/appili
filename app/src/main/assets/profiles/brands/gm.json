@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "gm",
+  "brandName": "GM / Chevrolet",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

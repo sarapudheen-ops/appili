@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "mercedes_benz",
+  "brandName": "Mercedes-Benz",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

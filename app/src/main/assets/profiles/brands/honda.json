@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "honda",
+  "brandName": "Honda / Acura",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

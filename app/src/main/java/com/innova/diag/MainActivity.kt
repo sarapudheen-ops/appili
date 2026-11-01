@@ -3,6 +3,7 @@ package com.innova.diag
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -19,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.innova.diag.platform.bluetooth.BLUETOOTH_RUNTIME_PERMISSIONS
+import com.innova.diag.platform.profile.BrandCatalogue
 import com.innova.diag.ui.ActiveTestViewModel
 import com.innova.diag.ui.AppTheme
 import com.innova.diag.ui.DiagnosticsApp
@@ -33,6 +35,39 @@ import com.innova.diag.ui.SessionExportPayload
  */
 class MainActivity : ComponentActivity() {
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        loadBrandCatalogue()
+        setContent {
+            AppTheme { DiagnosticsRoute(viewModel, activeTestViewModel) }
+        }
+    }
+
+    /**
+     * Loads every brand pack from assets at startup, through the schema.
+     *
+     * Non-fatal on purpose: a rejected pack is a data defect, and the aggregated problem list (with JSON
+     * pointers) belongs in the log, not in a crash. A `null` catalogue means "no brand is supported",
+     * which is the fail-closed reading — see [BrandCatalogue].
+     */
+    private fun loadBrandCatalogue() {
+        val registry = BrandCatalogue.load(applicationContext)
+        if (registry == null) {
+            Log.e(LOG_TAG, "brand packs rejected: ${BrandCatalogue.lastError}")
+        } else {
+            Log.i(
+                LOG_TAG,
+                "brand packs loaded: " + registry.listTiers().entries.joinToString { (brand, tier) ->
+                    "$brand=$tier"
+                },
+            )
+        }
+    }
+
+    private companion object {
+        private const val LOG_TAG = "appili"
+    }
+
     private val viewModel: DiagnosticsViewModel by viewModels()
 
     /**
@@ -40,13 +75,6 @@ class MainActivity : ComponentActivity() {
      * touches the Bluetooth transport the other view model drives.
      */
     private val activeTestViewModel: ActiveTestViewModel by viewModels()
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContent {
-            AppTheme { DiagnosticsRoute(viewModel, activeTestViewModel) }
-        }
-    }
 }
 
 @Composable

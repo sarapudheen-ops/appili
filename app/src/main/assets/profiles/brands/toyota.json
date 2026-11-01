@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 2,
+  "brandId": "toyota",
+  "brandName": "Toyota / Lexus",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": [
+    {
+      "familyId": "imv_platform",
+      "familyName": "Toyota IMV (Innovative Multi-purpose Vehicle)",
+      "variantIds": [
+        "innova_2007_gcc"
+      ],
+      "variants": [
+        {
+          "variantId": "innova_2007_gcc",
+          "market": "GCC",
+          "yearRange": {
+            "from": 2007,
+            "to": 2007
+          },
+          "engineCode": "UNKNOWN",
+          "transmission": "UNKNOWN",
+          "verificationStatus": "UNVERIFIED",
+          "ecuDefinitions": [
+            {
+              "name": "Engine ECU",
+              "partNumber": "UNKNOWN",
+              "calibrationIds": [
+                "UNKNOWN"
+              ],
+              "network": "UNKNOWN",
+              "addressing": "UNKNOWN",
+              "verificationStatus": "UNVERIFIED"
+            }
+          ],
+          "supportedOperations": [
+            {
+              "id": "generic.read-supported-pids",
+              "description": "Mode 01 PID 00 supported-PID mask",
+              "sourceReference": "SAE J1979",
+              "verificationStatus": "UNVERIFIED",
+              "riskClass": "READ_ONLY",
+              "scope": "GENERIC",
+              "serviceBytes": "0100"
+            },
+            {
+              "id": "generic.read-engine-speed",
+              "description": "Mode 01 PID 0C engine speed",
+              "sourceReference": "SAE J1979",
+              "verificationStatus": "UNVERIFIED",
+              "riskClass": "READ_ONLY",
+              "scope": "GENERIC",
+              "serviceBytes": "010C"
+            },
+            {
+              "id": "generic.read-vehicle-speed",
+              "description": "Mode 01 PID 0D vehicle speed",
+              "sourceReference": "SAE J1979",
+              "verificationStatus": "UNVERIFIED",
+              "riskClass": "READ_ONLY",
+              "scope": "GENERIC",
+              "serviceBytes": "010D"
+            },
+            {
+              "id": "generic.read-stored-dtcs",
+              "description": "Mode 03 stored emission-related DTCs",
+              "sourceReference": "SAE J1979",
+              "verificationStatus": "UNVERIFIED",
+              "riskClass": "READ_ONLY",
+              "scope": "GENERIC",
+              "serviceBytes": "03"
+            },
+            {
+              "id": "generic.read-pending-dtcs",
+              "description": "Mode 07 pending DTCs",
+              "sourceReference": "SAE J1979",
+              "verificationStatus": "UNVERIFIED",
+              "riskClass": "READ_ONLY",
+              "scope": "GENERIC",
+              "serviceBytes": "07"
+            },
+            {
+              "id": "generic.read-permanent-dtcs",
+              "description": "Mode 0A permanent DTCs",
+              "sourceReference": "SAE J1979",
+              "verificationStatus": "UNVERIFIED",
+              "riskClass": "READ_ONLY",
+              "scope": "GENERIC",
+              "serviceBytes": "0A"
+            },
+            {
+              "id": "generic.read-vin",
+              "description": "Mode 09 PID 02 vehicle identification number",
+              "sourceReference": "SAE J1979",
+              "verificationStatus": "UNVERIFIED",
+              "riskClass": "READ_ONLY",
+              "scope": "GENERIC",
+              "serviceBytes": "0902"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

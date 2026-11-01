@@ -13,9 +13,10 @@ Pilot vehicle: 2007 Toyota Innova (GCC). **Read-only toward physical vehicles** 
 | Bluetooth Classic RFCOMM transport | Implemented: socket only, no commands sent on connect |
 | ELM adapter engine (channel + init) | Implemented: AT configuration only — **no PIDs, no headers** |
 | OBD-II read-only decode (modes 01/03/07/09) | Implemented: decoders + request port; **no writes** (build gate unrun — A9) |
-| Compose UI: connection, generic scan, live data, session export | Implemented: 177 JVM tests; gate and emulator run **unrun** (A9, A42) |
+| Compose UI: connection, generic scan, live data, session export | Implemented: gate and emulator run **unrun** (A9, A42) |
 | Vehicle profiles (JSON) + fail-closed matching gate | Implemented: parser, models, executor, candidate profile; gate **unrun** (A9) |
 | Active-test state machine + bench ECU + simulator screen | Implemented: dead-man switch, 10 s ceiling, hardware lock; gate **unrun** (A9) |
+| Multi-brand hierarchical packs (brand → family → variant) | Implemented: schema v2, registry, derived tiers, 12 packs (all T4); gate **unrun** (A9, A73) |
 | UDS / manufacturer-specific modes | Not started — blocked by unverified vehicle matrix |
 
 Opening an RFCOMM socket is transport plumbing: it sends zero bytes and assumes no protocol. Every
@@ -33,8 +34,10 @@ app/src/main/java/com/innova/diag/
   platform/bluetooth/      # RFCOMM transport, paired-device listing, permission provider
   domain/session/          # pure Kotlin: session log, sanitiser, JSON/CSV exporter
   domain/profile/          # pure Kotlin: profile schema, strict JSON parser, fail-closed gate
+  domain/profile/pack/     # pure Kotlin: brand/family/variant packs, schema validator, tier derivation
   domain/active/           # pure Kotlin: dead-man switch, bench ECU simulator, UDS frames
   platform/demo/           # demo-mode switch; the scripted transport itself lives in src/debug
+  platform/profile/        # AssetManager-backed pack source + the startup catalogue (A69)
   ui/                      # Compose: connection, generic scan, live data, raw console (debug only)
 app/src/test/java/com/innova/diag/
   core/transport/          # FakeByteTransport fixtures + contract tests
@@ -44,8 +47,11 @@ app/src/test/java/com/innova/diag/
   ui/                      # presentation tests: "never renders 0 for an absent value" and friends
   domain/session/          # export tests: well-formed JSON/CSV, VIN redaction, escaping
   domain/profile/          # parser rejections, model invariants, "refusal transmits nothing"
+  domain/profile/pack/     # schema, load, tier and shipped-asset tests: nothing ships that can transmit
   domain/active/           # release sends ReturnControlToECU, disconnect aborts, 10 s ceiling
 app/src/main/assets/profiles/  # toyota_innova_2007_gcc.json — UNVERIFIED candidate, no captured bytes
+app/src/main/assets/profiles/brands/  # 12 brand packs: 11 UNKNOWN stubs + the UNVERIFIED Innova pilot
+app/src/main/assets/profiles/schema/  # vehicle_pack_schema_v2.json — the contract the packs are checked against
 app/src/debug/java/com/innova/diag/
   platform/demo/           # DemoByteTransport: a scripted, authored ELM327 transcript (never shipped)
 ```
@@ -167,8 +173,9 @@ and init sequence, an empty `supportedServices`, and the note *"Awaiting physica
 authorized tool."* Every operation it declares is refused, and a test asserts that a real channel over
 a recording transport sees **zero bytes**.
 
-Profiles are not yet loaded by the app (A50): this phase adds the schema, the parser and the gate, not
-a new way for the UI to talk to a car.
+The flat v1 profile is still not loaded by the app (A50): that phase added the schema, the parser and the
+gate, not a new way for the UI to talk to a car. The phase-9 brand packs *are* loaded at startup (A69),
+again only to describe what exists — every operation in them is refused.
 
 ## Active tests (bench only)
 
@@ -198,6 +205,50 @@ press-and-hold control for the Radiator Fan Relay Test, and the live countdown t
 Its view model can only construct the mock, so the Bluetooth transport the other screens use is not in
 its object graph (A60).
 
+## Brand packs (brand → family → variant)
+
+Phase 9 replaces the single flat profile with a three-level catalogue under
+`app/src/main/assets/profiles/brands/`. Each pack is still **pure data** — parsed, never evaluated.
+
+```
+BrandPack          brandId, brandName, commonDtcDictionary,
+                   brandLevelProtocolDefaults, securityPolicyOverrides, families
+  FamilyPack       familyId, familyName, variantIds, variants
+    VehicleVariantPack  variantId, market, yearRange, engineCode, transmission,
+                        ecuDefinitions, supportedOperations, verificationStatus
+      VariantEcuDefinition  name, partNumber, calibrationIds, network, addressing, verificationStatus
+      SupportedOperation    id, description, sourceReference, verificationStatus,
+                            riskClass, scope (GENERIC | ENHANCED | UNKNOWN), serviceBytes
+Tier               T1_FULL_ENHANCED | T2_PARTIAL_ENHANCED | T3_GENERIC_ONLY | T4_UNVERIFIED
+```
+
+**Unknown is a value, not a hole.** Every field that was not captured on a bus is the literal string
+`UNKNOWN`, and every status that was not earned is `UNVERIFIED`. `null` and `""` are invalid in every
+field, at three levels: the schema (`minLength: 1`, no nullable property, `additionalProperties: false`),
+the model constructors, and a test that scans the shipped files for `: null` and `: ""`.
+
+`BrandPackRegistry` loads all packs at startup (`platform.profile.BrandCatalogue`), validating each
+against `assets/profiles/schema/vehicle_pack_schema_v2.json` first. Problems are **aggregated**, with a
+JSON pointer each, and one bad file fails the whole load — there is no partially loaded catalogue. The
+schema validator is hand-written over `domain.profile.JsonValue` (A64) and refuses any keyword it cannot
+enforce, so "validated against the schema" cannot quietly mean less than it says.
+
+**Tiers are derived from data, never stored** (A66): `T4` when no variant is verified, `T3` when verified
+variants exist but no OEM operation does, `T2` when a verified executable operation is `ENHANCED`, `T1`
+when one is a write. Nothing in a pack can set a tier — only evidence can move it.
+
+`PackOperationExecutor` is the only path from a pack to a transport, and it is stricter than the v1 gate:
+**an `UNVERIFIED` variant stops everything**, even if it describes a verified operation. The gate runs in
+order — undescribed brand/variant/operation, variant status, risk class, operation status, service bytes,
+ECU status — and every refusal throws `SafetyViolationException` with a reason before a byte is sent.
+
+What ships today (A68): twelve brands, all **T4**, and only `toyota` has a variant — the pilot
+`innova_2007_gcc` of `imv_platform`, `UNVERIFIED`, engine code and transmission `UNKNOWN`, one
+`UNVERIFIED` Engine ECU, and the seven generic SAE J1979 reads the app already implements
+(`0100`, `010C`, `010D`, `03`, `07`, `0A`, `0902`). The other eleven are `UNKNOWN`/`[]` skeletons.
+**No manufacturer command exists in any pack**, and `ShippedBrandPacksTest` drives every declared
+operation through the executor and asserts that not one command reaches the port.
+
 ## Verification status
 
 `./gradlew lintDebug testDebugUnitTest assembleDebug` has **not** been run: this repository was
@@ -205,12 +256,16 @@ authored in an environment with no JDK and no Android SDK (A9, A42), so the gate
 passed**, and the requested emulator run and screenshots could not be taken. What was verified
 instead, statically and mechanically:
 
-- 177 JVM test methods across 20 test classes from phases 1–6, plus the phase-7 profile tests
+- **317 JVM test methods across 31 test classes**, all against fake transports, replay strings, JSON
+  fixtures and a bench ECU — never a device: phases 1–6 (177 methods), the phase-7 profile tests
   (`VehicleProfileParserTest`, `ProfileOperationExecutorTest`, `ProfileModelTest`,
-  `ToyotaInnovaProfileAssetTest`) and the phase-8 active-test tests (`ActiveTestControllerTest`,
-  `MockEcuSimulatorTest`, `ActiveTestPresentationTest`), all against fake transports, replay strings,
-  JSON fixtures and a bench ECU — never a device.
-- A bracket/quote-aware scan of all 65 Kotlin sources: no unbalanced or mismatched delimiters.
+  `ToyotaInnovaProfileAssetTest`), the phase-8 active-test tests (`ActiveTestControllerTest`,
+  `MockEcuSimulatorTest`, `ActiveTestPresentationTest`) and the phase-9 pack tests (52 methods:
+  `BrandPackRegistryTest`, `PackSchemaTest`, `PackOperationExecutorTest`, `ShippedBrandPacksTest`).
+- A bracket/quote-aware scan of all 101 Kotlin sources: no unbalanced or mismatched delimiters.
+- The phase-9 shipped assets checked against the real schema and the model invariants by an independent
+  script (12 packs: no `null`, no `""`, no duplicate ids, no `VERIFIED` claim, no non-`READ_ONLY`
+  operation, no frame outside the generic set).
 - An identifier audit over `app/src/**/*.kt`: no unresolved capitalised reference.
 - The demo transcript driven through a mirror of the channel → decoder → `Readings` pipeline, which
   reproduces exactly the values in the demo section above (including that `0105` is never written).

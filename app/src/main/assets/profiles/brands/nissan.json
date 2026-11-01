@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "nissan",
+  "brandName": "Nissan / Infiniti",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

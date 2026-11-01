@@ -15,6 +15,7 @@ class SafetyViolationException(
     message: String,
     val profileId: String? = null,
     val operationId: String? = null,
+    val variantId: String? = null,
 ) : Exception(message) {
 
     /** Why a physical transmission was denied. Every value means "nothing was sent". */
@@ -37,5 +38,20 @@ class SafetyViolationException(
 
         /** The ECU definition does not declare the operation's service, so it was never captured. */
         SERVICE_NOT_DECLARED,
+
+        /** The requested variant is not described by this brand pack — nothing to verify against. */
+        VARIANT_NOT_DESCRIBED,
+
+        /** The variant is `UNVERIFIED` (or simulator-only): no physical execution may leave from it. */
+        VARIANT_NOT_VERIFIED,
+
+        /** An ECU definition in the variant is not verified, so the request has no captured target. */
+        ECU_NOT_VERIFIED,
+
+        /** The operation exists but is still `UNVERIFIED` — no captured bytes may be transmitted. */
+        OPERATION_NOT_VERIFIED,
+
+        /** The operation is verified but carries no captured service bytes, so there is nothing to send. */
+        SERVICE_BYTES_UNKNOWN,
     }
 }

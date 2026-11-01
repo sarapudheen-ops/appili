@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "mitsubishi",
+  "brandName": "Mitsubishi",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

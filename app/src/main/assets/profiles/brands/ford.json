@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "ford",
+  "brandName": "Ford / Lincoln",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

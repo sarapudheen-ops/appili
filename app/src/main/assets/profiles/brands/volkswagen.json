@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "volkswagen",
+  "brandName": "Volkswagen / Audi / Skoda / SEAT",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

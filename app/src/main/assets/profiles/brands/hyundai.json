@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "hyundai",
+  "brandName": "Hyundai / Kia",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

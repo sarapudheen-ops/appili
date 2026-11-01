@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "brandId": "subaru",
+  "brandName": "Subaru",
+  "commonDtcDictionary": "UNKNOWN",
+  "brandLevelProtocolDefaults": [
+    "UNKNOWN"
+  ],
+  "securityPolicyOverrides": [
+    "UNKNOWN"
+  ],
+  "families": []
+}

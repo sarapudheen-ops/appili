@@ -1,0 +1,250 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://appili.invalid/schema/vehicle_pack_schema_v2.json",
+  "title": "appili vehicle pack (brand -> family -> variant), schema v2",
+  "description": "Pure data, never code. Every value that is not physically verified is the string UNKNOWN or the enum UNVERIFIED; null and empty strings are invalid. Validated at load by com.innova.diag.domain.profile.pack.PackSchema, which refuses any keyword it cannot enforce.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "brandId",
+    "brandName",
+    "commonDtcDictionary",
+    "brandLevelProtocolDefaults",
+    "securityPolicyOverrides",
+    "families"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "const": 2
+    },
+    "brandId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "brandName": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "commonDtcDictionary": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "brandLevelProtocolDefaults": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      }
+    },
+    "securityPolicyOverrides": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "enum": ["UNKNOWN"]
+      }
+    },
+    "families": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["familyId", "familyName", "variantIds", "variants"],
+        "properties": {
+          "familyId": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[a-z0-9][a-z0-9._-]*$"
+          },
+          "familyName": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "variantIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "^[a-z0-9][a-z0-9._-]*$"
+            }
+          },
+          "variants": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "variantId",
+                "market",
+                "yearRange",
+                "engineCode",
+                "transmission",
+                "verificationStatus",
+                "ecuDefinitions",
+                "supportedOperations"
+              ],
+              "properties": {
+                "variantId": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "^[a-z0-9][a-z0-9._-]*$"
+                },
+                "market": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "yearRange": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["from", "to"],
+                  "properties": {
+                    "from": {
+                      "type": "integer",
+                      "minimum": 1886,
+                      "maximum": 2100
+                    },
+                    "to": {
+                      "type": "integer",
+                      "minimum": 1886,
+                      "maximum": 2100
+                    }
+                  }
+                },
+                "engineCode": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "transmission": {
+                  "type": "string",
+                  "minLength": 1,
+                  "pattern": "\\S"
+                },
+                "verificationStatus": {
+                  "type": "string",
+                  "enum": ["VERIFIED", "UNVERIFIED", "SIMULATOR_ONLY"]
+                },
+                "ecuDefinitions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "name",
+                      "partNumber",
+                      "calibrationIds",
+                      "network",
+                      "addressing",
+                      "verificationStatus"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "partNumber": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "calibrationIds": {
+                        "type": "array",
+                        "minItems": 1,
+                        "uniqueItems": true,
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "pattern": "\\S"
+                        }
+                      },
+                      "network": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "addressing": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "verificationStatus": {
+                        "type": "string",
+                        "enum": ["VERIFIED", "UNVERIFIED", "SIMULATOR_ONLY"]
+                      }
+                    }
+                  }
+                },
+                "supportedOperations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "id",
+                      "description",
+                      "sourceReference",
+                      "verificationStatus",
+                      "riskClass",
+                      "scope",
+                      "serviceBytes"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^[a-z0-9][a-z0-9._-]*$"
+                      },
+                      "description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "sourceReference": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "\\S"
+                      },
+                      "verificationStatus": {
+                        "type": "string",
+                        "enum": ["VERIFIED", "UNVERIFIED", "SIMULATOR_ONLY"]
+                      },
+                      "riskClass": {
+                        "type": "string",
+                        "enum": ["READ_ONLY", "ACTIVE_TEST", "CONFIGURATION"]
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": ["GENERIC", "ENHANCED", "UNKNOWN"]
+                      },
+                      "serviceBytes": {
+                        "type": "string",
+                        "minLength": 1,
+                        "pattern": "^(UNKNOWN|([0-9A-F]{2}){1,4})$"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -13,9 +13,8 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      # Kept for convenience, but not relied on: this action failed on the first run of
-      # this workflow (run 41255954864, step 4) and the ubuntu-latest image already ships
-      # the Android SDK, so the next step provisions exactly what the build needs.
+      # Kept for convenience, but not relied on: the ubuntu-latest image already ships the
+      # Android SDK, so the next step provisions exactly what the build needs.
       - uses: android-actions/setup-android@v3
         continue-on-error: true
       - name: Provision the Android SDK
@@ -34,4 +33,28 @@ jobs:
           "$SDKMANAGER" --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
       - run: chmod +x gradlew
       - name: Build & Test
-        run: ./gradlew clean lintDebug testDebugUnitTest assembleDebug 2>&1
+        run: |
+          set -o pipefail
+          ./gradlew clean lintDebug testDebugUnitTest assembleDebug 2>&1 | tee gradle.log
+      - name: Failure detail
+        if: failure()
+        run: |
+          # The gate is one command; when it fails, the reason is somewhere in a long log.
+          # Re-emit the interesting lines as annotations so the failure is readable in the
+          # run summary instead of being buried.
+          echo "--- environment ---"
+          java -version 2>&1 || true
+          echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
+          echo "--- failing tasks / errors ---"
+          grep -nE '(^e: |> Task .*FAILED|^FAILURE:|^> .*|error:|FAILED)' gradle.log 2>/dev/null | tail -n 40 || true
+          echo "--- tail of the log ---"
+          tail -n 30 gradle.log 2>/dev/null || true
+          if [ -f gradle.log ]; then
+            grep -nE '(^e: |> Task .*FAILED|^FAILURE:|^> |error:|FAILED)' gradle.log | tail -n 35 | while IFS= read -r line; do
+              escaped="${line//%/%25}"
+              escaped="${escaped//$'\r'/%0D}"
+              escaped="${escaped//$'\n'/%0A}"
+              escaped="${escaped//: / - }"
+              echo "::error::${escaped}"
+            done
+          fi

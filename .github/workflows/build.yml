@@ -13,7 +13,10 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      # No android-actions/setup-android here on purpose. It failed intermittently on this
+      # repository's own runs (41255954864 step 4, 41256856854 step 4) and succeeded on others,
+      # which made the whole gate a coin toss — and it is redundant, because ubuntu-latest ships
+      # the Android SDK. This step provisions exactly what app/build.gradle.kts needs instead.
       - name: Provision the Android SDK
         run: |
           set -euo pipefail

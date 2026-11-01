@@ -275,8 +275,26 @@ instead, statically and mechanically:
 CI exists for exactly that reason: [`.github/workflows/build.yml`](.github/workflows/build.yml) runs
 `./gradlew clean lintDebug testDebugUnitTest assembleDebug` on **JDK 17 + Android SDK** for every push
 and pull request, and the badge at the top of this file reports its real result — red means the gate
-failed, and no badge means it has not run yet. A green run is the evidence this section is waiting for;
-until one exists, the honest status of the gate in this repository remains "unrun here".
+failed, and no badge means it has not run yet. The workflow provisions the Android SDK itself instead of
+depending on `android-actions/setup-android`, which failed intermittently on this repository's own runs.
+
+### What CI found on its first runs
+
+CI ran the gate, and **it fails at compilation — before a single test executes**. Five Kotlin errors,
+none of them test failures:
+
+- `platform/profile/AssetPackSource.kt:12` — the KDoc says `brands/*.json`; Kotlin block comments
+  **nest**, so that `/*` swallows the rest of the file ("unclosed comment"), and the fallout is
+  `BrandCatalogue.kt:36` reporting no `AssetPackSource` at all.
+- `domain/profile/pack/PackSchema.kt:44` — a public `validate(document: JsonValue)` exposes the
+  `internal` `JsonValue` type.
+- `domain/obd/DiagnosticResult.kt:157` and `:173` — `mapData`/`mapSuccess` are `inline` and return
+  through `fold`, so their `transform` parameters need `crossinline` (pre-existing, phases 5–6).
+
+These are recorded here rather than quietly patched, because the change that added CI was scoped to the
+workflow and this file: **no Kotlin source and no test was touched**. Until they are fixed the badge is
+red and there is no test result to quote — which is precisely the honest answer this section exists to
+give.
 
 Treat the gate as the first thing to run on a machine with a JDK.
 

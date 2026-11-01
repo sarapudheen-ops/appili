@@ -322,7 +322,10 @@ The gate **runs on every push and pull request, and it passes**:
 **default branch**, which is what GitHub badges report: on a feature branch it shows the default
 branch's status until the work is merged. The first green run is
 [41258730456](https://github.com/sarapudheen-ops/appili/actions/runs/41258730456) on `6d6c0b9`: lint,
-the full unit-test suite and `assembleDebug` all succeeded.
+the full unit-test suite and `assembleDebug` all succeeded. The phase-10 additions were verified the same
+way: run [41301587126](https://github.com/sarapudheen-ops/appili/actions/runs/41301587126) on `5b696d5` is
+green (48 new gate/picker tests included), after one test-compile fix — a dropped `assertNull` import — in
+the run before it (A83).
 
 That run is the first time this repository has ever been compiled. It has **never** been built in the
 authoring environment, which has no JDK and no Android SDK (A9, A42) — so every earlier phase reported

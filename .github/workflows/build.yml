@@ -36,30 +36,37 @@ jobs:
         run: |
           set -o pipefail
           ./gradlew clean lintDebug testDebugUnitTest assembleDebug 2>&1 | tee gradle.log
-      - name: Failure detail
+      - name: Failing tests
+        if: failure()
+        run: |
+          # GitHub caps annotations at ten per step, so the failing unit tests get their own step:
+          # each line names the test and quotes its assertion message.
+          {
+            for report in app/build/test-results/testDebugUnitTest/*.xml; do
+              [ -e "$report" ] || continue
+              awk '/<testcase /{c="?"; if (match($0,/name="[^"]*"/)) c=substr($0,RSTART+6,RLENGTH-7)} /<failure /{m="failed"; if (match($0,/message="[^"]*"/)) m=substr($0,RSTART+9,RLENGTH-10); print "TEST " c " :: " substr(m,1,300)}' "$report"
+            done | head -n 10
+          } > tests.txt
+          while IFS= read -r line; do
+            printf '%s\n' "$line"
+            printf '::error::%s\n' "${line//%/%25}"
+          done < tests.txt
+      - name: Build failure detail
         if: failure()
         run: |
           echo "java: $(java -version 2>&1 | head -n 1)"
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"
-          # The gate is one command, so a failure is one line in a long log. Collect the
-          # informative lines — failing unit tests first, then compiler errors, the failed
-          # task and Gradle's own failure block — and re-emit them as annotations, which
-          # GitHub shows in the run summary (and caps at ten per step).
-          {
-            for report in app/build/test-results/testDebugUnitTest/*.xml; do
-              [ -e "$report" ] || continue
-              awk '/<testcase /{c="?"; if (match($0,/name="[^"]*"/)) c=substr($0,RSTART+6,RLENGTH-7)} /<failure /{m="failed"; if (match($0,/message="[^"]*"/)) m=substr($0,RSTART+9,RLENGTH-10); print "TEST " c " :: " substr(m,1,200)}' "$report"
-            done | head -n 4
-            if [ -f gradle.log ]; then
-              {
-                grep -E '^(e: )' gradle.log || true
-                grep -E '^> Task .* FAILED' gradle.log || true
-                awk '/^FAILURE:/{flag=1} flag' gradle.log | head -n 14 || true
-                tail -n 4 gradle.log || true
-              } | awk 'NF' | awk '!seen[$0]++' | head -n 6
-            fi
-          } > detail.txt
-          while IFS= read -r line; do
-            printf '%s\n' "$line"
-            printf '::error::%s\n' "${line//%/%25}"
-          done < detail.txt
+          if [ -f gradle.log ]; then
+            # Compiler errors, the task that failed, then Gradle's own failure block and the tail.
+            {
+              grep -E '^(e: )' gradle.log || true
+              grep -E '^> Task .* FAILED' gradle.log || true
+              awk '/^FAILURE:/{flag=1} flag' gradle.log | head -n 14 || true
+              tail -n 4 gradle.log || true
+            } | awk 'NF' | awk '!seen[$0]++' | head -n 10 | while IFS= read -r line; do
+              printf '%s\n' "$line"
+              printf '::error::%s\n' "${line//%/%25}"
+            done
+          else
+            echo "::error::gradle.log was not produced"
+          fi

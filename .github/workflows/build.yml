@@ -13,7 +13,25 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
+      # Kept for convenience, but not relied on: this action failed on the first run of
+      # this workflow (run 41255954864, step 4) and the ubuntu-latest image already ships
+      # the Android SDK, so the next step provisions exactly what the build needs.
       - uses: android-actions/setup-android@v3
+        continue-on-error: true
+      - name: Provision the Android SDK
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          test -d "$SDK_ROOT"
+          echo "Android SDK: $SDK_ROOT"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          SDKMANAGER="$(find "$SDK_ROOT/cmdline-tools" -maxdepth 4 -type f -name sdkmanager | sort | tail -n 1)"
+          test -n "$SDKMANAGER"
+          echo "sdkmanager: $SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          # compileSdk/targetSdk 34, minSdk 26 (app/build.gradle.kts).
+          "$SDKMANAGER" --install "platform-tools" "platforms;android-34" "build-tools;34.0.0"
       - run: chmod +x gradlew
       - name: Build & Test
         run: ./gradlew clean lintDebug testDebugUnitTest assembleDebug 2>&1

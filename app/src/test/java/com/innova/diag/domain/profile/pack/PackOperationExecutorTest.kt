@@ -136,12 +136,17 @@ class PackOperationExecutorTest {
 
     @Test
     fun `a refusal names the brand, the variant and the operation`() = runTest {
-        val catalogue = registry()
+        // An UNVERIFIED variant that still declares a verified operation: the refusal has to name all
+        // three levels, and it must be refused for the variant, not for the missing operation.
+        val catalogue = registry(
+            TestPacks.variant(supportedOperations = listOf(TestPacks.verifiedGenericOperation())),
+        )
 
         val error = assertThrowsSuspend<SafetyViolationException> {
             PackOperationExecutor(RecordingPort()).execute(catalogue, "test_brand", "test_variant", "generic.read-engine-speed")
         }
 
+        assertEquals(SafetyViolationException.Reason.VARIANT_NOT_VERIFIED, error.reason)
         assertEquals("test_brand", error.profileId)
         assertEquals("test_variant", error.variantId)
         assertEquals("generic.read-engine-speed", error.operationId)

@@ -13,10 +13,7 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '17'
-      # Kept for convenience, but not relied on: the ubuntu-latest image already ships the
-      # Android SDK, so the next step provisions exactly what the build needs.
       - uses: android-actions/setup-android@v3
-        continue-on-error: true
       - name: Provision the Android SDK
         run: |
           set -euo pipefail

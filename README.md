@@ -11,14 +11,14 @@ Pilot vehicle: 2007 Toyota Innova (GCC). **Read-only toward physical vehicles** 
 | Phase | State |
 |---|---|
 | Governance & safety docs | Complete — [`docs/`](docs) |
-| Android skeleton + transport contracts | Complete (build gate unrun — A9) |
+| Android skeleton + transport contracts | Complete; gate green in CI (A74) |
 | Bluetooth Classic RFCOMM transport | Implemented: socket only, no commands sent on connect |
 | ELM adapter engine (channel + init) | Implemented: AT configuration only — **no PIDs, no headers** |
-| OBD-II read-only decode (modes 01/03/07/09) | Implemented: decoders + request port; **no writes** (build gate unrun — A9) |
-| Compose UI: connection, generic scan, live data, session export | Implemented: gate and emulator run **unrun** (A9, A42) |
-| Vehicle profiles (JSON) + fail-closed matching gate | Implemented: parser, models, executor, candidate profile; gate **unrun** (A9) |
-| Active-test state machine + bench ECU + simulator screen | Implemented: dead-man switch, 10 s ceiling, hardware lock; gate **unrun** (A9) |
-| Multi-brand hierarchical packs (brand → family → variant) | Implemented: schema v2, registry, derived tiers, 12 packs (all T4); gate **unrun** (A9, A73) |
+| OBD-II read-only decode (modes 01/03/07/09) | Implemented: decoders + request port; **no writes**; gate green in CI (A74) |
+| Compose UI: connection, generic scan, live data, session export | Implemented; gate green in CI (A74); emulator run and screenshots still unrun (A42) |
+| Vehicle profiles (JSON) + fail-closed matching gate | Implemented: parser, models, executor, candidate profile; gate green in CI (A74) |
+| Active-test state machine + bench ECU + simulator screen | Implemented: dead-man switch, 10 s ceiling, hardware lock; gate green in CI (A74) |
+| Multi-brand hierarchical packs (brand → family → variant) | Implemented: schema v2, registry, derived tiers, 12 packs (all T4); gate green in CI (A74) |
 | UDS / manufacturer-specific modes | Not started — blocked by unverified vehicle matrix |
 
 Opening an RFCOMM socket is transport plumbing: it sends zero bytes and assumes no protocol. Every
@@ -253,50 +253,61 @@ operation through the executor and asserts that not one command reaches the port
 
 ## Verification status
 
-`./gradlew lintDebug testDebugUnitTest assembleDebug` has **not** been run: this repository was
-authored in an environment with no JDK and no Android SDK (A9, A42), so the gate is **UNRUN, not
-passed**, and the requested emulator run and screenshots could not be taken. What was verified
-instead, statically and mechanically:
+The gate **runs on every push and pull request, and it passes**:
+[`.github/workflows/build.yml`](.github/workflows/build.yml) runs
+`./gradlew clean lintDebug testDebugUnitTest assembleDebug` on **JDK 17 + Android SDK**
+(`ubuntu-latest`, Temurin 17), and the badge at the top of this file is its live result. The first green
+run is [41258730456](https://github.com/sarapudheen-ops/appili/actions/runs/41258730456) on `6d6c0b9`:
+lint, the full unit-test suite and `assembleDebug` all succeeded.
 
-- **317 JVM test methods across 31 test classes**, all against fake transports, replay strings, JSON
-  fixtures and a bench ECU — never a device: phases 1–6 (177 methods), the phase-7 profile tests
+That run is the first time this repository has ever been compiled. It has **never** been built in the
+authoring environment, which has no JDK and no Android SDK (A9, A42) — so every earlier phase reported
+the gate as *unrun*, honestly, rather than as passed. CI is what settled it, and it settled it the hard
+way; see below.
+
+What the suite covers, all against fake transports, replay strings, JSON fixtures and a bench ECU —
+never a device:
+
+- **317 JVM test methods across 31 test classes**: phases 1–6 (177 methods), the phase-7 profile tests
   (`VehicleProfileParserTest`, `ProfileOperationExecutorTest`, `ProfileModelTest`,
   `ToyotaInnovaProfileAssetTest`), the phase-8 active-test tests (`ActiveTestControllerTest`,
   `MockEcuSimulatorTest`, `ActiveTestPresentationTest`) and the phase-9 pack tests (52 methods:
   `BrandPackRegistryTest`, `PackSchemaTest`, `PackOperationExecutorTest`, `ShippedBrandPacksTest`).
-- A bracket/quote-aware scan of all 101 Kotlin sources: no unbalanced or mismatched delimiters.
-- The phase-9 shipped assets checked against the real schema and the model invariants by an independent
-  script (12 packs: no `null`, no `""`, no duplicate ids, no `VERIFIED` claim, no non-`READ_ONLY`
-  operation, no frame outside the generic set).
-- An identifier audit over `app/src/**/*.kt`: no unresolved capitalised reference.
-- The demo transcript driven through a mirror of the channel → decoder → `Readings` pipeline, which
-  reproduces exactly the values in the demo section above (including that `0105` is never written).
+- The phase-9 shipped assets are checked against the real schema and the model invariants by test and by
+  an independent script (12 packs: no `null`, no `""`, no duplicate ids, no `VERIFIED` claim, no
+  non-`READ_ONLY` operation, no frame outside the generic set).
 
-CI exists for exactly that reason: [`.github/workflows/build.yml`](.github/workflows/build.yml) runs
-`./gradlew clean lintDebug testDebugUnitTest assembleDebug` on **JDK 17 + Android SDK** for every push
-and pull request, and the badge at the top of this file reports its real result — red means the gate
-failed, and no badge means it has not run yet. The workflow provisions the Android SDK itself instead of
+Still outstanding, and not claimed: the emulator run and screenshots, and anything requiring a real
+vehicle.
+
+### What it took to go green
+
+The gate never passed before, so the first runs were a backlog of everything that had never been
+compiled. In order, CI found:
+
+1. **Five compile errors in main sources** — a KDoc containing `brands/*.json` (Kotlin block comments
+   *nest*, so that `/*` swallowed the rest of `AssetPackSource.kt`, and `BrandCatalogue` then reported
+   the class as missing), a public `PackSchema.validate(document: JsonValue)` exposing the `internal`
+   `JsonValue`, and two missing `crossinline` modifiers on the `inline` `mapData`/`mapSuccess`.
+2. **Four compile errors in test sources** — `FixedChannel { "…" }` where the helper takes a `String`,
+   a missing `import kotlinx.coroutines.cancelAndJoin`, and mockk's `any()` unable to infer a type
+   against the overloaded `BluetoothAdapter.getRemoteDevice`.
+3. **Four failing tests** — `mapData`/`mapSuccess` rebuilt failures instead of passing them through by
+   identity; an adapter printing `SEARCHING… ELM327 v1.5` on one line yielded no identity at all; a
+   whitespace-only `ATI` answer was reported as `Malformed` instead of `NoResponse`; and one phase-9 test
+   asked for a variant its own catalogue did not declare.
+4. **One more failing assertion that could never pass** — `^[0-9A-Fa-f]` was used to mean "a bare
+   diagnostic request", but `A`–`F` are hex digits, so it matched every `AT…` command. It now matches a
+   whole hex request.
+
+Each is recorded in the commit history with its cause. No test assertion was deleted or relaxed: three
+of those fixes made the tests pass by fixing the code they were written against, and one corrected a
+pattern that contradicted its own stated intent.
+
+The workflow provisions the Android SDK itself (`platforms;android-34`, `build-tools;34.0.0`) instead of
 depending on `android-actions/setup-android`, which failed intermittently on this repository's own runs.
-
-### What CI found on its first runs
-
-CI ran the gate, and **it fails at compilation — before a single test executes**. Five Kotlin errors,
-none of them test failures:
-
-- `platform/profile/AssetPackSource.kt:12` — the KDoc says `brands/*.json`; Kotlin block comments
-  **nest**, so that `/*` swallows the rest of the file ("unclosed comment"), and the fallout is
-  `BrandCatalogue.kt:36` reporting no `AssetPackSource` at all.
-- `domain/profile/pack/PackSchema.kt:44` — a public `validate(document: JsonValue)` exposes the
-  `internal` `JsonValue` type.
-- `domain/obd/DiagnosticResult.kt:157` and `:173` — `mapData`/`mapSuccess` are `inline` and return
-  through `fold`, so their `transform` parameters need `crossinline` (pre-existing, phases 5–6).
-
-These are recorded here rather than quietly patched, because the change that added CI was scoped to the
-workflow and this file: **no Kotlin source and no test was touched**. Until they are fixed the badge is
-red and there is no test result to quote — which is precisely the honest answer this section exists to
-give.
-
-Treat the gate as the first thing to run on a machine with a JDK.
+When the gate fails, two follow-up steps re-emit the failing tests and the compiler errors as
+annotations, because the gate is one command and its reason is otherwise one line inside a long log.
 
 ## Build & verify
 
@@ -306,3 +317,6 @@ point at the SDK, or set `ANDROID_HOME`.
 ```bash
 ./gradlew lintDebug testDebugUnitTest assembleDebug
 ```
+
+CI runs the same gate with `clean` in front of it, on JDK 17 plus the Android SDK it provisions itself
+(A74, A75); see `.github/workflows/build.yml`.

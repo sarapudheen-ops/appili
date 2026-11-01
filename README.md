@@ -256,9 +256,11 @@ operation through the executor and asserts that not one command reaches the port
 The gate **runs on every push and pull request, and it passes**:
 [`.github/workflows/build.yml`](.github/workflows/build.yml) runs
 `./gradlew clean lintDebug testDebugUnitTest assembleDebug` on **JDK 17 + Android SDK**
-(`ubuntu-latest`, Temurin 17), and the badge at the top of this file is its live result. The first green
-run is [41258730456](https://github.com/sarapudheen-ops/appili/actions/runs/41258730456) on `6d6c0b9`:
-lint, the full unit-test suite and `assembleDebug` all succeeded.
+(`ubuntu-latest`, Temurin 17), and the badge at the top of this file is its live result — on the
+**default branch**, which is what GitHub badges report: on a feature branch it shows the default
+branch's status until the work is merged. The first green run is
+[41258730456](https://github.com/sarapudheen-ops/appili/actions/runs/41258730456) on `6d6c0b9`: lint,
+the full unit-test suite and `assembleDebug` all succeeded.
 
 That run is the first time this repository has ever been compiled. It has **never** been built in the
 authoring environment, which has no JDK and no Android SDK (A9, A42) — so every earlier phase reported

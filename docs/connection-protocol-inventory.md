@@ -1,109 +1,126 @@
 # Toyota/Lexus connection-protocol inventory
 
-## Result and scope
+## Deliverable
 
-This repository is a **Toyota/Lexus diagnostic data package**, not source code for a
-vehicle-protocol matrix. The package identifies itself as Toyota/Lexus V10.62 in
-`HINI_EN.HTML`; its data containers are labelled `TOYOTA` and most of the binary
-tables are labelled V10.01.
+The package contains a recoverable system-entry transport selector for every
+`SYSLIST` system record. The read-only extractor is:
 
-I was able to extract the connection modes implemented by the Toyota system-entry
-module and the protocol-transport capabilities that support them. I could **not
-truthfully assign one of those modes to each vehicle, model year, or individual
-ECU** from the files currently present. The vehicle/ECU-to-mode relation is held
-inside proprietary `YZJM` binary tables and is not available as plaintext or as a
-self-contained, decodable schema in this checkout.
-
-This distinction is important: a mode appearing in the native library means that
-this package can use that mode. It does not prove that every ECU—or any particular
-vehicle—uses it.
-
-## Extracted system-entry connection modes
-
-The following entry-mode functions are exported by `libTOYOTA_SYSP.so` and are the
-strongest direct evidence of the Toyota-specific connection modes in this package.
-
-| Mode exposed by the package | Evidence | What can safely be concluded |
-|---|---|---|
-| **CAN bus** | `CANBUSEnterMode`; `CANBUSCheckEcuConnect` in `libTOYOTA_FDATA.so` | A Toyota ECU entry path over CAN is implemented. |
-| **Fast KWP** | `FastKWPEnterMode`; `FastKWPCheckEcuConnect` | A distinct fast-KWP entry path is implemented. |
-| **ISO** | `ISOEnterMode`; `ISOCheckEcuConnect` | A distinct ISO entry path is implemented. The files do not identify its per-vehicle physical/timing variant. |
-| **VPW** | `VPWEnterMode` plus `VPW_*` transport routines | A VPW entry path is implemented. |
-| **DESO** | `DESOEnterMode` | A separate vendor-specific entry mode exists under this exact internal name. Its expansion and vehicle/ECU assignments are not exposed by the repository. |
-
-### Supporting transport capabilities
-
-These symbols are present in the Toyota libraries, but should be treated as
-**capabilities**, not per-vehicle assignments:
-
-| Capability | Evidence | Classification |
-|---|---|---|
-| CAN multi-frame transport | `ISO15765SendAndReceiveMultiFrame`, `SetCan15765`, `Can*Send*Frame*` | CAN transport capability; `ISO15765` appears as a multi-frame transport routine. |
-| KWP request handling | `ToyotaKwpSendDataToEcuGetMultiFrameAnswer`, `KWP2000_SendDataToEcuGetAnswer`, `Kwp*` | KWP/KWP2000 service and transport capability. |
-| ISO/KWP line setup | `InitKWPISOMode`, `ISOEnterMode`, `FastKWPEnterMode` | Initialization/entry capability; no physical-layer parameters are exposed in plaintext. |
-| L-line support | `EnableLLine`, `AddressCodeCommunicationWay_Lline` | Optional L-line-related handling exists; it is not enough to assign an ECU to an L-line configuration. |
-| CAN setup variants | `InitCanBusMode`, `InitExtendCanbusMode`, `SetCanComPara`, `SetCan15765` | CAN configuration support; bitrate, identifier format, and ECU address are not recoverable from the available plaintext. |
-
-## ECU/vehicle coverage visible in the package
-
-`HINI_EN.HTML` identifies the covered ECU families, including Engine, Vehicle
-Control, Transmission, ABS, Electric Parking Brake, SRS, Hybrid Control, Air
-Conditioner, Body, Smart Key, TPMS, Gateway, radar/camera ADAS systems, EV/HV
-Battery, Combination Meter, Telematics, Navigation, and many others.
-
-The package includes regional ECU-data payloads in `BIN.ZIP`:
-
-| Region directory | `Ecu_Data_*.BIN` files |
-|---|---:|
-| EU | 477 |
-| NA | 421 |
-| JP | 500 |
-
-Those 1,398 files are **payload files, not verified unique ECU records**. For
-example, an identically named ECU payload can occur in multiple regions. Their
-names do not include a vehicle, ECU label, or protocol.
-
-## Why a per-vehicle/per-ECU protocol matrix cannot be produced from this checkout
-
-1. The relevant binary tables—`SYSLIST_*.BIN`, `SYSTEMENTER.BIN`,
-   `FUNCDATA_*.BIN`, `ECUPROGRAM.BIN`, and the archived ECU payloads—use the
-   proprietary `05 00 59 5A 4A 4D` (`YZJM`) container form after a small cleartext
-   product header. They do not contain readable vehicle/ECU/protocol records.
-2. `libTOYOTA_FILE.so` parses system-list records through indirection points named
-   `fopenEx`, `fseekEx`, and `freadEx`. In this repository they are exported as
-   pointer objects, rather than implementations that can be run to materialize the
-   records. The surrounding host/application that initializes them is not present.
-3. The package does include generic resource helpers such as `SearchIdOpenFile`,
-   `FromIdGetBinaryString`, and GGP/GAG readers, but their directly recognized
-   `WCX`/`LAH` formats do not decode the supplied `YZJM` tables into a usable
-   vehicle/ECU mapping on their own.
-4. The native code establishes the available entry modes, but neither the HTML nor
-   cleartext metadata binds an ECU name or vehicle application to one of those mode
-   selectors.
-
-Therefore this repository supports an **evidence-based protocol inventory**, not a
-safe protocol matrix. Assigning CAN, ISO, Fast KWP, VPW, or DESO to a specific ECU
-without the missing runtime/container decoder would be a guess.
-
-## What is needed to finish the requested one-to-one extraction
-
-Provide one of the following from the diagnostic application's matching runtime:
-
-- the Android APK or native component that initializes `fopenEx`, `fseekEx`,
-  `freadEx`, and `fcloseEx` for the `YZJM` data containers; or
-- an exported/decoded system list containing, at minimum, vehicle identifier,
-  model year/market, ECU name or system ID, and the entry-mode value; or
-- a captured **read-only** system-list load from the app with the decoded records.
-
-With that input, the final matrix can be emitted as:
-
-```text
-market | vehicle | model year/range | ECU/system | entry mode | transport | evidence/source
+```bash
+python3 tools/extract_toyota_protocols.py \
+  --output /tmp/toyota-system-protocols.csv \
+  --summary /tmp/toyota-system-protocol-summary.json
 ```
 
-## Safety boundary
+It writes one row for every represented **vehicle-profile key / system (ECU)
+key** relation. It does not send traffic to a vehicle and does not produce
+addresses, headers, timing values, initialization bytes, or write commands.
 
-No ECU addresses, headers, initialization bytes, timing values, or write commands
-were inferred. In particular, `AGENTS.md` marks the 2007 Toyota Innova GCC
-engine/ECU/protocol as **UNKNOWN until verified**; this inventory does not change
-that status.
+The CSV columns are:
+
+```text
+region, vehicle_key, system_record_ordinal, system_id,
+system_entry_variant, entry_selector, entry_record_kind,
+connection_path, verification_status
+```
+
+`vehicle_key` and `system_id` are the package's stable numeric database keys.
+They are the identifiers actually used in the system-entry lookup. The English
+vehicle/system labels are held in separate encrypted GGP text resources; they
+have **not** been relabelled using guesses. This is intentional: it prevents a
+numeric system key from being incorrectly represented as a named ECU.
+
+## Verified results
+
+The extractor decodes the `YZJM` V10.01 wrapper used by `SYSLIST_*.BIN` and
+`SYSTEMENTER.BIN`, joins each regional vehicle-profile list to its
+`SYSTEMENTER` record, and obtains the selector byte consumed by
+`libTOYOTA_SYSP.so:SystemEnterPart`.
+
+| Region | Vehicle-profile keys | System rows | System-entry group | Unknown rows |
+|---|---:|---:|---:|---:|
+| EU | 5,654 | 157,500 | 1 | 152 |
+| NA | 2,726 | 74,985 | 2 | 729 |
+| JP | 1,764 | 54,545 | 3 | 0 |
+| **Total** | **10,144** | **287,030** | — | **881** |
+
+A row may repeat a system key across multiple vehicle-profile keys, and a
+vehicle profile can contain repeated system records. The CSV intentionally
+preserves those relationships rather than falsely treating the 1,398
+`Ecu_Data_*.BIN` archive members as globally unique ECUs.
+
+### Connection-path counts
+
+| Connection path | Rows | Meaning |
+|---|---:|---|
+| CAN | 236,066 | `SystemEnterPart` selector 3, 4, or 7 dispatches to `CANBUSEnterMode`. |
+| Fast KWP | 49,750 | Selector 1 dispatches to `FastKWPEnterMode`. |
+| ISO | 10 | Selector 2 dispatches to `ISOEnterMode`. |
+| Fast KWP then ISO fallback | 27 | Selector 5 attempts Fast KWP and falls back to ISO only on the native failure path. |
+| VPW | 294 | Selector 10 dispatches to `VPWEnterMode`. |
+| Custom/unclassified | 2 | Selector 6 uses an unnamed/custom entry path. It is **not** called DESO without further proof. |
+| Unknown/unmapped | 881 | No matching `SYSTEMENTER` record in the selected group; deliberately fail closed. |
+
+The unknown rows are retained by the CSV with `connection_path=UNKNOWN` and
+`verification_status=UNKNOWN` rather than assigned a protocol.
+
+## Native selector evidence
+
+`libTOYOTA_FILE.so:GetInfoFromEnterList` reads the record byte at offset `+5`
+into the system-entry context selector (`+0x828`).
+`libTOYOTA_SYSP.so:SystemEnterPart` dispatches that selector as follows:
+
+| Selector | Native behavior | Extractor connection path/status |
+|---:|---|---|
+| 1 | `FastKWPEnterMode` | Fast KWP / verified named entry |
+| 2 | `ISOEnterMode` | ISO / verified named entry |
+| 3 | `CANBUSEnterMode` | CAN / verified named entry |
+| 4 | `CANBUSEnterMode` | CAN / verified named entry |
+| 5 | `FastKWPEnterMode`, then `ISOEnterMode` on the failure branch | Fast KWP then ISO fallback / verified sequence |
+| 6 | Internal custom data-driven path | Unclassified / unknown |
+| 7 | `CANBUSEnterMode` | CAN / verified named entry |
+| 8 | Dispatcher failure path | No usable entry path / not supported |
+| 9 | No entry action | No entry action / not supported |
+| 10 | `VPWEnterMode` | VPW / verified named entry |
+
+Selectors 8 and 9 are exposed in `SYSTEMENTER.BIN` but do not occur in the
+current `SYSLIST` rows. The extractor still implements them to remain faithful
+to the native dispatch table.
+
+## Decoder scope and validation
+
+The canonical files use the clear header:
+
+```text
+05 00 59 5A 4A 4D 00 07 00 TOYOTA 00 07 00 V10.01 00 D5 21 58 34
+```
+
+`libDEVICEID.so:fopenEx` derives a 32-byte context key from that header, and
+`freadEx` applies its word transform when the data tables are read. The
+extractor reproduces that exact V10.01 path only and rejects any different
+product/version/seed combination. It also preserves the native unencrypted
+`0x00000000` and `0xffffffff` sentinel words.
+
+The regression suite includes a raw encrypted `SYSTEMENTER.BIN` hexadecimal
+fixture and verifies its decoded output, plus checks the first decoded EU
+system-profile records:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
+## Important limits
+
+- **Package capability is not a universal assignment.** The CSV records the
+  selector bound to a particular package vehicle-profile/system-key relation;
+  it does not claim that all Toyota/Lexus ECUs use CAN, KWP, ISO, or VPW.
+- **Text labels remain unresolved.** The English vehicle and ECU display names
+  are in proprietary GGP/GAG text resources. Until that text layer is decoded,
+  use the CSV's numeric keys as canonical identifiers and do not substitute
+  guessed model/ECU names.
+- **No low-level diagnostic configuration was extracted.** A transport family
+  does not verify ECU address, CAN identifier, K-line initialization, baud
+  rate, request header, service, PID, or timing. All such fields remain
+  unknown unless separately verified.
+- The 2007 Toyota Innova GCC engine/ECU/protocol in `AGENTS.md` remains
+  **UNKNOWN until verified**. This data extraction does not authorize an
+  on-vehicle connection or change that status.

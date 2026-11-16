@@ -30,8 +30,10 @@ vehicle lookup. In particular, it has **no validated join** to the 2007 GCC
 Innova/Kijang `TGN41L` / 2TR-FE target. The complete read-only target sweep,
 including all 1,395 decoded `BIN.ZIP` members, found no decoded `innova`,
 `kijang`, `tgn41l`, `tgn41`, `tgn4`, `an40`, `2tr-fe`, `2trfe`, or `89661`
-identifier. It therefore cannot select a `vehicle_key`, `system_id`, or
-connection path for that vehicle. See
+identifier. A repeat sweep using the user-reported Indonesian candidate also
+found no decoded `tgn41r`, `89661-0k150`, `896610k150`, or `0k150` identifier.
+It therefore cannot select a `vehicle_key`, `system_id`, or connection path for
+that vehicle. See
 [`innova-gcc-target-research.md`](innova-gcc-target-research.md) for the
 field-by-field `UNKNOWN` inventory and reproducible sweep.
 

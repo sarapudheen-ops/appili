@@ -4,6 +4,13 @@
 **Target stated by requester:** 2007 Toyota Innova, 2.7 L four-cylinder petrol,
 GCC/Middle East.
 
+**Candidate-identity update:** The requester reports that the vehicle is the same
+model as the Indonesian application previously discussed and that they observed
+this under the hood. No VIN/frame number, model-code transcription, or legible
+engine-ECU label was supplied. Accordingly, Indonesian `TGN41R` and
+`89661-0K150` are included in the repeat sweep as **candidate identifiers**;
+they are not promoted to installed-ECU facts.
+
 > **Safety status — fail closed:** This record does **not** authorize a vehicle
 > connection or provide a usable request. No diagnostic traffic, request or
 > response bytes, write operation, address, header, timing value, initialization
@@ -19,9 +26,10 @@ or any target-specific diagnostic-communications parameter.
 
 A complete read-only package sweep found **no decoded identifier that joins the
 GCC TGN41L / 2TR-FE target to any package vehicle-profile key, ECU/system key,
-connection selector, or command data**. Therefore no package-wide transport
-capability (including generic `KWP2000`, CAN, ISO, or VPW strings) can be
-assigned to this vehicle.
+connection selector, or command data**. A repeat sweep also found no raw or
+decoded `TGN41R`, `89661-0K150`, or `0K150` candidate marker. Therefore no
+package-wide transport capability (including generic `KWP2000`, CAN, ISO, or
+VPW strings) can be assigned to this vehicle.
 
 ## Vehicle and ECU identity boundary
 
@@ -30,7 +38,7 @@ assigned to this vehicle.
 | Vehicle family | **Supported:** Innova/Kijang Innova `TGN41L` / 2TR-FE, GCC | The General-market EPC describes `TGN41L-GKPNKV` as 2TRFE, LHD, `4FC`, GCC and CBU, with production starting 07.2005 ([EPC configuration](https://toyota-general.epc-data.com/innova_kijang/tgn41l/4037/)). A separate GCC configuration, `TGN41L-GKPDKV`, covers 08.2007–08.2008 and identifies 2TRFE, LHD, `4FC`, GCC and CBU ([EPC configuration](https://www.amayama.com/en/genuine-catalogs/epc/toyota-general/innova_kijang/TGN41L/15294/engine/8719)). |
 | Possible 2007 variants | **More than one** | The cited `GKPNKV` configuration begins 07.2005; the cited `GKPDKV` configuration begins 08.2007. A 2007 calendar year by itself cannot choose GL versus DLX or prove exact build month, transmission, trim, or calibration. |
 | Engine-control ECU class | **Engine-control computer/ECM class only** | Toyota uses PNC `89661` for `COMPUTER, ENGINE CONTROL`. This is a part class, not a target-specific part number or a communication profile. |
-| Exact Toyota ECU part number | **UNKNOWN** | No source found ties a `89661-...` part number to the 2007 GCC `TGN41L` / 2TR-FE target. `89661-0K150` is documented for an **Indonesian** TGN41R 2TR-FE application (12.2004–08.2007), so it is expressly excluded rather than transferred to GCC `TGN41L` ([excluded sibling record](https://toyota-general.epc-data.com/innova_kijang/tgn41r/4038/chassis/8404/89661/)). |
+| Exact Toyota ECU part number | **UNKNOWN; `89661-0K150` is an active candidate only** | The requester reports an under-hood match to the Indonesian application, but supplied no legible label or part-number transcription. The catalog documents `89661-0K150` for an **Indonesian** TGN41R 2TR-FE application (12.2004–08.2007), not independently for the GCC TGN41L ([candidate catalog record](https://toyota-general.epc-data.com/innova_kijang/tgn41r/4038/chassis/8404/89661/)). The repeat package sweep found no `89661-0K150` marker. It must not be treated as the installed ECU number until the label/VIN evidence is available. |
 | Denso model, ECU hardware, software/calibration | **UNKNOWN** | No target ECU label, Denso number, calibration label, or VIN/frame-specific EPC lookup was found. |
 
 The engine-control ECU **class** does not establish a particular ECU, transport,
@@ -46,7 +54,7 @@ Toyota default and must not be turned into a live-vehicle action.
 
 | Field group | Field | Status | Evidence boundary / disposition |
 |---|---|---|---|
-| Scope | Exact vehicle configuration | **UNKNOWN** | VIN/frame, build month, trim, transmission, and ECU label not supplied. Multiple GCC configurations can fall in 2007. |
+| Scope | Exact vehicle configuration | **UNKNOWN; Indonesian TGN41R is a user-reported candidate** | VIN/frame, model-code transcription, build month, trim, transmission, and ECU label not supplied. The user report justifies a candidate sweep, but does not resolve the `TGN41L`/`TGN41R` or market distinction. |
 | Scope | Target engine | **Supported at family level** | 2TR-FE is documented for cited GCC TGN41L configurations; exact ECU calibration remains unknown. |
 | ECU identity | Toyota `89661-...` number | **UNKNOWN** | Indonesian TGN41R number is excluded; no GCC-TGN41L match found. |
 | ECU identity | Denso number, hardware family, calibration/software ID | **UNKNOWN** | No target ECU label or target-bound technical data found. |
@@ -75,7 +83,9 @@ proof for the target:
 - ISO 14230/M-OBD material for a **1KD/2KD diesel** Innova manual;
 - generic Toyota-by-year protocol tables;
 - shared-platform Hilux, Fortuner, Tacoma, later-Innova, 1TR-FE, or 2.0 L data;
-- Indonesian TGN41R `89661-0K150` engine-control-computer catalog data;
+- Indonesian TGN41R `89661-0K150` engine-control-computer catalog data **as a
+  confirmed installed ECU**. It is retained as a user-reported candidate, not
+  confirmation, until its model code or ECU label is captured;
 - a raw `2tr` byte sequence; and
 - generic transport/service/write strings from the software package.
 
@@ -118,7 +128,7 @@ leads only; they cannot assign a parameter absent a target identifier join.
 | Proprietary label-resource SHA-256 | `231098c9cb40e7ea97ab8ca630c97c375bb5cefe2b163abab9050bb8c4f90923` (`TOYOTA_EN.GGP`); `749d2543c6ecd4f54ffe1182575243a4b17ba834e1c1cd33420a02707ab4ea15` (`TCODEH_CN.GAG`) |
 | Vehicle communication | None. The analysis read package data only; it did not open a diagnostic transport or generate traffic. |
 
-### Target-identifer result
+### Target-identifier result
 
 | Search surface | `innova`, `kijang`, `tgn41l`, `tgn41`, `tgn4`, `an40`, `2tr-fe`, `2trfe`, `89661` |
 |---|---|
@@ -141,6 +151,30 @@ The human-readable labels required to join numeric package records to vehicles
 remain undecoded inside proprietary GGP/GAG resources. A clear-text miss in a
 raw container is not proof that a label is absent; it is only proof that a safe,
 decoded target-to-key join has not been established.
+
+### Indonesian-candidate repeat sweep
+
+After the requester reported an under-hood match to the Indonesian application,
+the same read-only method was repeated with both original and candidate terms:
+
+```bash
+python3 tools/scan_toyota_package_identifiers.py \
+  --term innova --term kijang --term tgn41r --term tgn41l --term tgn41 \
+  --term 2tr-fe --term 2trfe --term 89661 --term 89661-0k150 \
+  --term 896610k150 --term 0k150 --term denso \
+  --output /tmp/tgn41r-indonesia-candidate-sweep.json
+```
+
+| Search surface | Candidate result |
+|---|---|
+| Raw top-level package files and decompressed `BIN.ZIP` member bytes | **0 matches** for `innova`, `kijang`, `tgn41r`, `tgn41l`, `tgn41`, `2tr-fe`, `2trfe`, `89661`, `89661-0k150`, `896610k150`, and `0k150`. |
+| Decoded top-level V10.01 YZJM payloads and decoded `BIN.ZIP` payloads | **0 matches** for every repeat-sweep term, including `denso`. |
+| Raw `denso` lead | Five generic library-string hits: one in `Funcfg.so` and four in `libOBD2_SPEC_APP.so`. No hit contains a vehicle code, ECU part number, calibration, profile/system key, or target communication field. |
+
+The repeat sweep therefore does not turn `TGN41R` or `89661-0K150` into a
+package-selected profile, ECU, protocol, address, header, timing value, service,
+PID, traffic trace, or write operation. It does, however, preserve those values
+as explicit candidates for a future label/VIN-based lookup.
 
 ## Why the numeric protocol matrix cannot be used for this vehicle
 
@@ -169,12 +203,14 @@ the decoder’s verified selector semantics and its limits.
 To narrow the inventory safely, obtain one or more of the following, then
 re-evaluate only when the source is demonstrably for this vehicle:
 
-1. VIN/frame number and production month, plus a Toyota General/GCC EPC result
-   that identifies the engine ECU `89661-...` part number;
-2. a clear, legible photograph of the installed engine ECU label showing Toyota
-   and Denso numbers/calibration; and
-3. a 2007 GCC TGN41L / 2TR-FE Toyota wiring diagram or service-manual section
-   that explicitly maps the ECU and diagnostic communication properties.
+1. VIN/frame number and production month, plus a Toyota General/GCC or
+   Indonesian EPC result that identifies the engine ECU `89661-...` part number;
+2. a clear, legible photograph of the installed engine ECU label showing the
+   Toyota number (in particular whether it says `89661-0K150`), Denso number,
+   and calibration; and
+3. a 2007 market/model-code-specific 2TR-FE Toyota wiring-diagram or
+   service-manual section that explicitly maps the ECU and diagnostic
+   communication properties.
 
 Until then, all operational diagnostic fields in this document remain
 `UNKNOWN`; the fail-closed requirements in [`AGENTS.md`](../AGENTS.md) control.

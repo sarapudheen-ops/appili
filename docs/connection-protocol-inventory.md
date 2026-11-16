@@ -23,6 +23,18 @@ system_entry_variant, entry_selector, entry_record_kind,
 connection_path, verification_status
 ```
 
+## Target-assignment boundary
+
+The matrix is an inventory of package-internal numeric relationships, not a
+vehicle lookup. In particular, it has **no validated join** to the 2007 GCC
+Innova/Kijang `TGN41L` / 2TR-FE target. The complete read-only target sweep,
+including all 1,395 decoded `BIN.ZIP` members, found no decoded `innova`,
+`kijang`, `tgn41l`, `tgn41`, `tgn4`, `an40`, `2tr-fe`, `2trfe`, or `89661`
+identifier. It therefore cannot select a `vehicle_key`, `system_id`, or
+connection path for that vehicle. See
+[`innova-gcc-target-research.md`](innova-gcc-target-research.md) for the
+field-by-field `UNKNOWN` inventory and reproducible sweep.
+
 `vehicle_key` and `system_id` are the package's stable numeric database keys.
 They are the identifiers actually used in the system-entry lookup. The English
 vehicle/system labels are held in separate encrypted GGP text resources; they

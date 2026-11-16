@@ -10,6 +10,7 @@ from tools.extract_toyota_protocols import (
     decode_yzjm_file,
     parse_system_enter,
 )
+from tools.scan_toyota_package_identifiers import find_identifier_offsets
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +51,15 @@ class ToyotaProtocolExtractorTests(unittest.TestCase):
             for index in range(3)
         ]
         self.assertEqual(first_system_ids, [97, 8, 15])
+
+    def test_identifier_sweep_supports_ascii_and_utf16_without_overlap_loss(self) -> None:
+        self.assertEqual(find_identifier_offsets(b"xxTGN41Lxx", "tgn41l"), [2])
+        self.assertEqual(
+            find_identifier_offsets(b"xT\x00G\x00N\x004\x001\x00L\x00x", "TGN41L"),
+            [1],
+        )
+        # Advancing by one byte retains overlapping raw matches.
+        self.assertEqual(find_identifier_offsets(b"aaaa", "aa"), [0, 1, 2])
 
 
 if __name__ == "__main__":
